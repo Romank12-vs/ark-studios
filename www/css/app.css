@@ -339,3 +339,9 @@ svg.i.row-chev{flex:none;width:16px;height:16px;color:var(--muted);opacity:.6}
 .msg-copy{margin-top:8px;border:0;color:var(--accent)}
 dialog{background:var(--bg)}
 input[type=text],input[type=tel],input[type=date],input[type=time],input[type=number],input[type=url],select,textarea{background:var(--surface)}
+
+/* Money */
+.money-line{margin:8px 4px 0;font-size:15px}
+.money-line b{color:var(--ink);font-weight:600}
+.amt.tone-warn{color:var(--warn)}
+.amt.tone-done{color:var(--done)}

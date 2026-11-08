@@ -412,14 +412,20 @@ function moneyView(){
     if(c.status==='booked'||c.status==='done'){booked+=x.total;if(x.bal>0){due+=x.bal;dues.push({c,bal:x.bal})}}
   });
   dues.sort((a,b)=>(a.c.date||'9999').localeCompare(b.c.date||'9999'));recent.sort((a,b)=>b.p.date.localeCompare(a.p.date));
+  const seg=ui.moneySeg==='received'?'received':'due';
   let h=`${pageHead('Money')}
-  <div class="kpis" style="margin-top:14px"><div class="kpi big"><div><span>Still to collect</span><b>${money(due)}</b></div></div>
-  <div class="kpi"><b>${money(month)}</b><span>This month</span></div><div class="kpi"><b>${money(recv)}</b><span>Received in total</span></div><div class="kpi"><b>${money(booked)}</b><span>Booked value</span></div></div>`;
-  h+=`<section class="sec"><div class="sec-head"><h2>Payments due</h2></div>`;
-  h+=dues.length?`<div class="list">${dues.map(({c,bal})=>{const d=daysLeft(c.date);return `<div class="li"><button class="grow" style="background:none;border:0;padding:0;text-align:left" data-act="open" data-c="${c.id}" data-t="pay"><b>${esc(c.name)}</b><small>${c.date?(d<0?'Event was '+esc(fmtDate(c.date,{day:'numeric',month:'short'})):d===0?'Event today':'Event in '+d+' day'+(d>1?'s':'')):'No event date'}</small></button><span class="amt" style="color:var(--warn)">${money(bal)}</span><button class="btn sm wa" data-act="compose" data-c="${c.id}" data-t="payment" aria-label="Send payment reminder">${ic('wa')}</button></div>`}).join('')}</div>`:`<p class="muted small">Everyone is paid up 🎉</p>`;
-  h+=`</section><section class="sec"><div class="sec-head"><h2>Recent payments</h2></div>`;
-  h+=recent.length?`<div class="list">${recent.slice(0,25).map(({c,p})=>`<button class="li" data-act="editPay" data-c="${c.id}" data-x="${p.id}"><div class="grow"><b>${esc(c.name)}</b><small>${esc(fmtDate(p.date))}, ${esc(p.mode)}</small></div><span class="amt" style="color:var(--done)">${money(p.amount)}</span></button>`).join('')}</div>`:`<p class="muted small">Recorded payments show up here.</p>`;
-  return h+'</section>';
+  <div style="margin-top:12px"><div class="card-accent"><span class="row-main"><span class="lbl">${dues.length?`To collect · ${dues.length} client${dues.length===1?'':'s'}`:'Nothing to collect'}</span><span class="big">${money(due)}</span></span></div></div>
+  <p class="page-sub money-line">Received this month <b>${money(month)}</b></p>
+  <p class="page-sub money-line">${money(recv)} received in total · ${money(booked)} booked</p>
+  <div class="seg" style="margin-top:14px">${[['due','Due'],['received','Received']].map(([k,l])=>`<button data-act="moneySeg" data-s="${k}" aria-pressed="${seg===k}">${l}</button>`).join('')}</div>`;
+  if(seg==='due'){
+    h+=dues.length?`<div class="group" style="margin-top:12px">${dues.map(({c,bal})=>{const d=daysLeft(c.date);
+      const when=c.date?(d<0?'Event was '+fmtDate(c.date,{day:'numeric',month:'short'}):d===0?'Event today':'Event in '+d+' day'+(d>1?'s':'')):'No event date';
+      return `<div class="swipe" data-swipe><div class="swipe-act"><button class="wa" data-act="compose" data-c="${c.id}" data-t="payment">${ic('wa')}Remind</button></div><div class="swipe-front row"><button class="row-main row-tap" data-act="open" data-c="${c.id}" data-t="pay"><span class="row-title">${esc(c.name)}</span><span class="row-sub">${esc(when)}</span></button><span class="row-end amt tone-warn">${money(bal)}</span><button class="btn sm wa" data-act="compose" data-c="${c.id}" data-t="payment" aria-label="Send payment reminder to ${esc(c.name)}">${ic('wa')}</button></div></div>`}).join('')}</div>`:`<div class="group" style="margin-top:12px"><div class="row"><span class="row-main"><span class="row-sub">Everyone is paid up</span></span></div></div>`;
+  }else{
+    h+=recent.length?`<div class="group" style="margin-top:12px">${recent.slice(0,25).map(({c,p})=>`<button class="row" data-act="editPay" data-c="${c.id}" data-x="${p.id}"><span class="row-main"><span class="row-title">${esc(c.name)}</span><span class="row-sub">${esc(fmtDate(p.date))} · ${esc(p.mode)}</span></span><span class="row-end amt tone-done">${money(p.amount)}</span></button>`).join('')}</div>`:`<div class="group" style="margin-top:12px"><div class="row"><span class="row-main"><span class="row-sub">Recorded payments show up here</span></span></div></div>`;
+  }
+  return h;
 }
 
 function todoView(){
@@ -643,6 +649,7 @@ document.addEventListener('click',async e=>{
     case 'open':go('client',{c:b.dataset.c,tab:t||'songs'});break;
     case 'ctab':cur().tab=t;render(false);break;
     case 'clientsFilter':ui.clientFilter=b.dataset.f;ui.q='';if(cur().v!=='clients') tab('clients');else render(false);break;
+    case 'moneySeg':ui.moneySeg=b.dataset.s;render(false);break;
     case 'schedSeg':ui.schedSeg=b.dataset.s;render(false);break;
     case 'todo':ui.todoStage=+b.dataset.s;go('todo');break;
     case 'todoStage':ui.todoStage=+b.dataset.s;render(false);break;
@@ -720,6 +727,7 @@ document.addEventListener('click',async e=>{
       const d={amount,date:val('f_pdate')||todayISO(),mode:val('f_mode'),note:val('f_pnote')};
       if(x) Object.assign(x,d);else cc.payments.push({id:uid(),...d});
       save();closeSheet();render(false);
+      if(!x) ArkNative.tap();
       if(!x) toast(money(amount)+' recorded',{label:'Send receipt',fn:()=>{ui.compose={c:cc.id,t:'receipt'};composer()}});else toast('Payment saved');
       break;}
     case 'delPay':{const sn=snap();c.payments=c.payments.filter(x=>x.id!==b.dataset.x);save();closeSheet();render(false);toast('Payment deleted',sn);break;}
