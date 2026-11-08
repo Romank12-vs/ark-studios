@@ -96,6 +96,8 @@ const ICON={
  plus:'<path d="M12 5v14M5 12h14"/>',
  edit:'<path d="M4 20h4L19 9l-4-4L4 16z"/>',
  check:'<path d="m5 12.5 4.5 4.5L19 7"/>',
+ sun:'<circle cx="12" cy="12" r="4"/><path d="M12 2.5v2M12 19.5v2M2.5 12h2M19.5 12h2M5.3 5.3l1.4 1.4M17.3 17.3l1.4 1.4M5.3 18.7l1.4-1.4M17.3 6.7l1.4-1.4"/>',
+ gear:'<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 0 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.6 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 0 1 0-4h.1a1.7 1.7 0 0 0 1.6-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 0 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 0 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/>',
  calplus:'<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4M12 13v5M9.5 15.5h5"/>'
 };
 const ic=(n,cls='')=>`<svg class="i ${cls}" viewBox="0 0 24 24" aria-hidden="true">${ICON[n]}</svg>`;
@@ -188,19 +190,32 @@ const fill=(t,v)=>t.replace(/\{(\w+)\}/g,(m,k)=>k in v?v[k]:m).replace(/[ \t]+\n
 
 /* ================= navigation ================= */
 const cur=()=>ui.stack[ui.stack.length-1];
-function go(v,params){ui.stack.push({v,...(params||{})});try{history.pushState({d:ui.stack.length},'')}catch(e){}render(true)}
+// Pushed screens slide in from the right and back out (View Transitions API where available).
+function withTransition(dir,fn){
+  const reduce=typeof matchMedia==='function'&&matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if(dir==='none'||reduce||!document.startViewTransition){fn();return}
+  document.documentElement.dataset.vt=dir;
+  document.startViewTransition(fn).finished.finally(()=>{delete document.documentElement.dataset.vt});
+}
+function go(v,params){withTransition('push',()=>{ui.stack.push({v,...(params||{})});try{history.pushState({d:ui.stack.length},'')}catch(e){}render(true)})}
 function tab(v){ui.stack=[{v}];render(true)}
 function back(){
   if(ui.stack.length<=1) return tab('home');
   ui.pendingBack=true;
   try{history.back()}catch(e){}
-  setTimeout(()=>{if(ui.pendingBack){ui.pendingBack=false;ui.stack.pop();render(true)}},250);
+  setTimeout(()=>{if(ui.pendingBack){ui.pendingBack=false;withTransition('pop',()=>{ui.stack.pop();render(true)})}},250);
 }
 window.addEventListener('popstate',()=>{
   if(sheet.open){closeSheet();try{history.pushState({d:ui.stack.length},'')}catch(e){};ui.pendingBack=false;return}
   ui.pendingBack=false;
-  if(ui.stack.length>1){ui.stack.pop();render(true)}
+  if(ui.stack.length>1) withTransition('pop',()=>{ui.stack.pop();render(true)});
 });
+// Root screens: a large title, plus a compact frosted bar that fades in once the title scrolls away.
+function pageHead(title,opts){
+  opts=opts||{};
+  return `<div class="topbar root" id="topbar"><span class="t">${title}</span>${opts.action||''}</div>
+  <header class="pagehead"><h1 class="large-title">${title}</h1>${opts.sub?`<p class="page-sub">${opts.sub}</p>`:''}</header>`;
+}
 
 /* ================= views ================= */
 function emptyHero(text,btns){return `<div class="empty"><div class="eq" aria-hidden="true">${[.3,.6,1,.5,.75].map(h=>`<i style="--h:${h}"></i>`).join('')}</div><p>${text}</p><div class="btns" style="justify-content:center">${btns}</div></div>`}
@@ -217,7 +232,7 @@ function homeView(){
   const todays=[];state.clients.forEach(c=>c.rehearsals.forEach(r=>{if(r.date===t&&r.status!=='cancelled') todays.push({c,r})}));
   todays.sort((a,b)=>(a.r.time||'').localeCompare(b.r.time||''));
   const evToday=state.clients.filter(c=>c.date===t&&c.status!=='cancelled');
-  h+=`<section class="sec"><div class="sec-head"><h2>Today</h2><button class="link" data-act="nav" data-v="schedule">Schedule</button></div>`;
+  h+=`<section class="sec"><div class="sec-head"><h2>Today</h2><button class="link" data-act="push" data-v="schedule">Full schedule</button></div>`;
   if(!todays.length&&!evToday.length) h+=`<div class="list"><div class="li"><div class="grow"><b>No rehearsals today</b><small>${nextRehText()}</small></div></div></div>`;
   else{
     h+='<div class="list">';
@@ -262,7 +277,7 @@ function clientCard(c){
 }
 
 function clientsView(){
-  let h=`<header class="pagehead"><h1 class="display">Clients</h1></header>
+  let h=`${pageHead('Clients')}
   <div class="searchbox">${ic('search')}<input type="search" id="q" placeholder="Search clients, events or songs" value="${esc(ui.q)}" aria-label="Search"></div>
   <div class="chips" role="group" aria-label="Filter">${[['booked','Active'],['enquiry','Enquiries'],['done','Completed'],['all','All']].map(([k,l])=>`<button class="chip" data-act="clientsFilter" data-f="${k}" aria-pressed="${ui.clientFilter===k}">${l} <span class="muted">${k==='all'?state.clients.length:state.clients.filter(c=>c.status===k).length}</span></button>`).join('')}</div>
   <div id="clientList" style="margin-top:12px">${clientListHTML()}</div>`;
@@ -380,7 +395,8 @@ function scheduleView(){
     if(c.date&&c.status!=='cancelled'&&((seg==='upcoming')===(c.date>=t))) items.push({d:c.date,k:'00',c,ev:true});
   });
   items.sort((a,b)=>(a.d+a.k).localeCompare(b.d+b.k));if(seg==='past') items.reverse();
-  let h=`<header class="pagehead"><h1 class="display">Schedule</h1><p>Rehearsals and event days across all clients</p></header>
+  let h=`<div class="topbar" id="topbar"><button class="iconbtn" data-act="back" aria-label="Back">${ic('back')}Today</button><span class="t">Schedule</span>${state.clients.length?`<button class="iconbtn" data-act="newReh" aria-label="Schedule rehearsal">${ic('plus')}</button>`:'<span class="iconbtn" aria-hidden="true"></span>'}</div>
+  <header class="pagehead"><h1 class="large-title">Schedule</h1><p class="page-sub">Rehearsals and event days across all clients</p></header>
   <div class="seg" style="margin-top:12px">${[['upcoming','Upcoming'],['past','Past']].map(([k,l])=>`<button data-act="schedSeg" data-s="${k}" aria-pressed="${seg===k}">${l}</button>`).join('')}</div>`;
   if(!items.length) return h+emptyHero(seg==='upcoming'?'Nothing scheduled. Plan a rehearsal and it shows up here.':'No past rehearsals yet.',state.clients.length&&seg==='upcoming'?`<button class="btn primary" data-act="newReh">${ic('calplus')}Schedule rehearsal</button>`:'');
   let last='';
@@ -399,7 +415,7 @@ function moneyView(){
     if(c.status==='booked'||c.status==='done'){booked+=x.total;if(x.bal>0){due+=x.bal;dues.push({c,bal:x.bal})}}
   });
   dues.sort((a,b)=>(a.c.date||'9999').localeCompare(b.c.date||'9999'));recent.sort((a,b)=>b.p.date.localeCompare(a.p.date));
-  let h=`<header class="pagehead"><h1 class="display">Payments</h1></header>
+  let h=`${pageHead('Money')}
   <div class="kpis" style="margin-top:14px"><div class="kpi big"><div><span>Still to collect</span><b>${money(due)}</b></div></div>
   <div class="kpi"><b>${money(month)}</b><span>This month</span></div><div class="kpi"><b>${money(recv)}</b><span>Received in total</span></div><div class="kpi"><b>${money(booked)}</b><span>Booked value</span></div></div>`;
   h+=`<section class="sec"><div class="sec-head"><h2>Payments due</h2></div>`;
@@ -430,7 +446,7 @@ function todoView(){
 function moreView(){
   const st=state.settings;
   const segOf=(key,opts)=>`<div class="seg">${opts.map(([k,l])=>`<button data-act="setPref" data-k="${key}" data-v="${k}" aria-pressed="${st[key]===k}">${l}</button>`).join('')}</div>`;
-  let h=`<header class="pagehead"><h1 class="display">Settings</h1><p>${esc(syncLabel)}</p></header>
+  let h=`${pageHead('Settings',{sub:esc(syncLabel)})}
   <section class="sec"><div class="sec-head"><h2>Your profile</h2></div>
   <label class="field"><span>Your name</span><input type="text" data-set="name" value="${esc(st.name)}" placeholder="e.g. Riya Sharma" autocomplete="name"></label>
   <label class="field"><span>Studio name</span><input type="text" data-set="studio" value="${esc(st.studio)}" placeholder="e.g. Steps by Riya"><small>Used to sign every WhatsApp message.</small></label>
@@ -451,14 +467,14 @@ function moreView(){
 }
 
 /* ================= render ================= */
-const TABS=[['home','Home','home'],['clients','Clients','users'],['schedule','Schedule','cal'],['money','Payments','wallet'],['more','Settings','more']];
+const TABS=[['home','Today','sun'],['clients','Clients','users'],['money','Money','wallet'],['more','Settings','gear']];
 function render(scroll){
   const v=cur().v;
   const html=v==='client'?clientView():v==='clients'?clientsView():v==='schedule'?scheduleView():v==='money'?moneyView():v==='todo'?todoView():v==='more'?moreView():homeView();
   $('#app').innerHTML=html;
   const root=ui.stack[0].v;
   $('#tabs').innerHTML=TABS.map(([k,l,i])=>`<button data-act="nav" data-v="${k}" ${root===k?'aria-current="page"':''}>${ic(i)}${l}</button>`).join('');
-  const fab=$('#fab'),fabs={clients:['newClient','New client'],schedule:['newReh','Rehearsal'],money:['newPay','Payment']};
+  const fab=$('#fab'),fabs={clients:['newClient','New client'],money:['newPay','Record payment']};
   const f=state.clients.length||v==='clients'?fabs[v]:null;
   if(f&&!(v!=='clients'&&!state.clients.length)){fab.hidden=false;fab.dataset.act=f[0];fab.innerHTML=ic('plus');fab.setAttribute('aria-label',f[1])}else fab.hidden=true;
   if(scroll) window.scrollTo(0,0);
@@ -617,6 +633,7 @@ document.addEventListener('click',async e=>{
   const t=b.dataset.t;
   switch(a){
     case 'nav':tab(b.dataset.v);break;
+    case 'push':go(b.dataset.v);break;
     case 'back':back();break;
     case 'open':go('client',{c:b.dataset.c,tab:t||'songs'});break;
     case 'ctab':cur().tab=t;render(false);break;

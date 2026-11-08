@@ -260,3 +260,23 @@ button.row:active,a.row:active{background:var(--sunk)}
 .card-accent .lbl{display:block;font-size:15px;opacity:.85}
 .fab{width:56px;height:56px;padding:0;border-radius:50%;justify-content:center}
 .fab svg.i{width:26px;height:26px}
+
+/* navigation: centred compact titles, a root bar that fades in on scroll, slide transitions */
+.topbar .t{text-align:center}
+.topbar.root{position:fixed;left:0;right:0;top:var(--safe-top);margin:0;justify-content:center;opacity:0;pointer-events:none;transition:opacity .15s;border-bottom:var(--hair) solid transparent}
+.topbar.root.scrolled{opacity:1;pointer-events:auto;border-bottom-color:var(--line)}
+.topbar.root .t{opacity:1;max-width:680px}
+.pagehead .large-title{margin:0}
+nav.tabs{view-transition-name:tabs}
+.fab{view-transition-name:fab}
+@media (prefers-reduced-motion: no-preference){
+  ::view-transition-old(root),::view-transition-new(root){animation-duration:.28s;animation-timing-function:cubic-bezier(.2,.8,.2,1)}
+  :root[data-vt="push"]::view-transition-old(root){animation-name:vt-out-left}
+  :root[data-vt="push"]::view-transition-new(root){animation-name:vt-in-right}
+  :root[data-vt="pop"]::view-transition-old(root){animation-name:vt-out-right}
+  :root[data-vt="pop"]::view-transition-new(root){animation-name:vt-in-left}
+}
+@keyframes vt-in-right{from{transform:translateX(100%)}}
+@keyframes vt-out-left{to{transform:translateX(-30%)}}
+@keyframes vt-in-left{from{transform:translateX(-30%)}}
+@keyframes vt-out-right{to{transform:translateX(100%)}}
