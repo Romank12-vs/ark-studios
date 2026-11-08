@@ -60,6 +60,17 @@ test('autoBackup does nothing when nothing changed or there is no data', async (
   assert.equal(await B.autoBackup({ state: state({ clients: [] }), now: NOW, today: T, fs }), null);
   assert.deepEqual(fs.log, []);
 });
+test('writeBackup never writes a state with no clients', async () => {
+  const fs = fakeFs(['ark-studios-backup-2026-11-08.json']);
+  assert.equal(await B.writeBackup({ state: state({ clients: [] }), today: T, fs }), null);
+  assert.deepEqual(fs.log, []);
+});
+test('pruning never removes the file just written', async () => {
+  const fs = fakeFs(days('2027-01-01', 14));
+  assert.equal(await B.writeBackup({ state: state(), today: T, fs }), 'ark-studios-backup-2026-11-08.json');
+  assert.equal(fs.log.some(([op, n]) => op === 'remove' && n === 'ark-studios-backup-2026-11-08.json'), false);
+  assert.equal(fs.files.includes('ark-studios-backup-2026-11-08.json'), true);
+});
 test('a failing folder listing never fails the backup', async () => {
   const fs = fakeFs(); fs.list = async () => null;
   assert.equal((await B.autoBackup({ state: state(), now: NOW, today: T, fs })).ok, true);

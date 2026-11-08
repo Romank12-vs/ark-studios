@@ -37,22 +37,23 @@ async function tryWrite(fs, name, text){
   try { return !!(await fs.write(name, text)); } catch(e){ return false; }
 }
 
-async function prune(fs){
+async function prune(fs, keepName){
   try {
     const names = await fs.list();
     if(!names) return;
-    for(const name of prunable(names)){
+    for(const name of prunable(names).filter(n => n !== keepName)){
       try { await fs.remove(name); } catch(e){ /* a stuck old file is not worth failing over */ }
     }
   } catch(e){ /* listing failed: skip pruning */ }
 }
 
 async function writeBackup({state, today, fs}){
+  if(!hasClients(state)) return null; // a backup never overwrites a file with an empty state
   const text = backupText(state);
   const first = C.backupFileName(today);
   const second = 'ark-studios-backup-' + today + '-2.json';
   const name = (await tryWrite(fs, first, text)) ? first : (await tryWrite(fs, second, text)) ? second : null;
-  if(name) await prune(fs);
+  if(name) await prune(fs, name);
   return name;
 }
 
