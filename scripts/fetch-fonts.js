@@ -8,7 +8,6 @@ const CSS_URL = 'https://fonts.googleapis.com/css2?family=Rozha+One&display=swap
 const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36';
 const KEEP = new Set(['latin', 'latin-ext']); // latin-ext carries the rupee sign (U+20B9)
 const LICENSES = {
-
   'OFL-RozhaOne.txt': 'https://raw.githubusercontent.com/google/fonts/main/ofl/rozhaone/OFL.txt',
 };
 const OUT = path.join(__dirname, '..', 'www', 'fonts');
