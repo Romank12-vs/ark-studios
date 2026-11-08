@@ -8,7 +8,7 @@
   --font-title:"Rozha One",Georgia,serif;
   --safe-top:max(env(safe-area-inset-top, 0px), var(--safe-area-inset-top, 0px));
   --safe-bottom:max(env(safe-area-inset-bottom, 0px), var(--safe-area-inset-bottom, 0px));
-  --radius-card:16px; --radius-ctl:12px; --hair:0.5px;
+  --topbar-h:60px; --radius-card:16px; --radius-ctl:12px; --hair:0.5px;
   color-scheme:light;
   box-sizing:border-box;
   padding-top:var(--safe-top);
@@ -56,7 +56,7 @@ h1,h2,h3{margin:0;font-weight:600}
 .link{background:none;border:0;padding:6px 0;color:var(--accent);font-weight:600;font-size:.95rem}
 
 /* sticky bars */
-.topbar{position:sticky;top:var(--safe-top);z-index:8;background:var(--bar);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);margin:0 -16px;padding:8px 10px;display:flex;align-items:center;gap:6px;min-height:52px}
+.topbar{position:sticky;top:var(--safe-top);z-index:8;background:var(--bar);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);margin:0 -16px;padding:8px 10px;display:flex;align-items:center;gap:6px;min-height:var(--topbar-h)}
 .topbar .t{flex:1;min-width:0;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;opacity:0;transition:opacity .15s}
 .topbar.scrolled .t{opacity:1}
 .iconbtn{display:inline-flex;align-items:center;justify-content:center;gap:4px;background:none;border:0;border-radius:12px;min-width:40px;height:40px;padding:0 8px;color:var(--ink)}
@@ -64,7 +64,7 @@ h1,h2,h3{margin:0;font-weight:600}
 .seg{display:flex;background:var(--sunk);border-radius:12px;padding:3px;gap:2px}
 .seg button{flex:1;border:0;background:transparent;border-radius:9px;padding:8px 6px;font-weight:600;font-size:.88rem;color:var(--muted);white-space:nowrap}
 .seg button[aria-pressed="true"]{background:var(--surface);color:var(--ink);box-shadow:0 1px 2px rgba(0,0,0,.08)}
-.segbar{position:sticky;top:calc(var(--safe-top) + 52px);z-index:7;background:var(--bar);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);margin:0 -16px;padding:6px 16px 10px}
+.segbar{position:sticky;top:calc(var(--safe-top) + var(--topbar-h));z-index:7;background:var(--bar);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);margin:0 -16px;padding:6px 16px 10px}
 
 /* chips & badges */
 .chips{display:flex;gap:8px;overflow-x:auto;padding:2px 0 4px;scrollbar-width:none}
@@ -77,16 +77,9 @@ h1,h2,h3{margin:0;font-weight:600}
 .b-done{background:var(--done-soft);color:var(--done)}
 .b-cancelled{color:var(--muted)}
 .b-soon{background:var(--warn-soft);color:var(--warn)}
-.b-due{background:var(--warn-soft);color:var(--warn)}
 
 .eq{display:flex;align-items:flex-end;gap:3px;height:28px;flex:1;min-width:0}
 .eq i{display:block;flex:1;max-width:9px;height:calc(var(--h) * 100%);min-height:3px;border-radius:2px;background:var(--accent)}
-
-.eq i.full{background:var(--done)}
-
-.stage{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:10px 4px 9px;text-align:center}
-.stage b{display:block;font-size:1.35rem;line-height:1.1}
-.stage span{display:block;font-size:.8125rem;color:var(--muted);margin-top:2px;line-height:1.15}
 
 /* list rows */
 .list{background:var(--surface);border:1px solid var(--line);border-radius:16px;overflow:hidden}
@@ -118,12 +111,7 @@ h1,h2,h3{margin:0;font-weight:600}
 .hero{padding:6px 0 14px}
 .hero h1{font-size:28px;line-height:1.1}
 
-.hero .btns{margin-top:14px}
-
 .order{flex:none;width:26px;height:26px;border-radius:50%;background:var(--ink);color:var(--bg);display:inline-flex;align-items:center;justify-content:center;font-weight:700;font-size:.85rem}
-
-.song{padding:12px 0;border-bottom:1px solid var(--line)}
-
 
 .note{white-space:pre-wrap;color:var(--muted);font-size:.9rem;margin-top:8px}
 
@@ -172,7 +160,6 @@ dialog[open]{animation:up .22s ease-out}
 .grab{width:40px;height:5px;border-radius:9px;background:var(--line);margin:4px auto 10px}
 .sheet-head{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:14px}
 .sheet-head h2{font-size:1.22rem}
-.x{background:var(--sunk);border:0;border-radius:999px;width:36px;height:36px;font-size:1.15rem;line-height:1;flex:none}
 #msg{min-height:250px;font-size:15px}
 .toast{position:fixed;left:50%;bottom:calc(84px + var(--safe-bottom));transform:translate(-50%,10px);background:var(--ink);color:var(--bg);padding:10px 10px 10px 16px;border-radius:14px;font-weight:600;font-size:.9rem;z-index:60;opacity:0;pointer-events:none;transition:opacity .18s,transform .18s;display:flex;align-items:center;gap:12px;max-width:calc(100% - 32px)}
 .toast.show{opacity:1;transform:translate(-50%,0);pointer-events:auto}
@@ -188,8 +175,8 @@ dialog[open]{animation:up .22s ease-out}
 .swipe-front{position:relative;background:var(--surface);touch-action:pan-y}
 
 /* ---------- v1.1 iOS warm components ---------- */
-.btn,.iconbtn,.chip,.seg button,.link,.x{min-height:44px}
-.iconbtn,.x{min-width:44px}
+.btn,.iconbtn,.chip,.seg button,.link{min-height:44px}
+.iconbtn{min-width:44px}
 .btn.sm{min-height:44px;padding:8px 13px}
 .chip{display:inline-flex;align-items:center;gap:6px}
 .large-title{font-family:var(--font-title);font-weight:400;font-size:30px;line-height:1.1;margin:12px 0 4px}

@@ -38,3 +38,11 @@ test('tab bar has one column per tab', () => {
 test('sheet header stays visible while a long sheet scrolls', () => {
   assert.match(css(), /\.sheet-head\{[^}]*position:sticky/);
 });
+test('segbar sits right under the 60 px top bar', () => {
+  assert.match(css(), /--topbar-h:\s*60px/);
+  assert.match(css(), /\.topbar\{[^}]*min-height:var\(--topbar-h\)/);
+  assert.match(css(), /\.segbar\{[^}]*top:calc\(var\(--safe-top\) \+ var\(--topbar-h\)\)/);
+});
+test('no styles left for removed elements', () => {
+  for (const re of [/\.b-due\b/, /\.eq i\.full/, /\.stage\b/, /\.hero \.btns/, /\.song(?![\w-])/, /\.x(?![\w-])/]) assert.doesNotMatch(css(), re);
+});

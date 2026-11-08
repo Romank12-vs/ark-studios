@@ -25,3 +25,6 @@ test('every v1.0 action still has a handler', () => {
 test('every handler is reachable', () => {
   for (const a of handlers) assert.ok(referenced.has(a), `nothing on screen triggers "${a}"`);
 });
+test('a back button that shows a word is named by it', () => {
+  assert.doesNotMatch(html, /aria-label="[^"]*">\$\{ic\('back'\)\}[A-Za-z]/);
+});

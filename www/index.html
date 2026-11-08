@@ -393,7 +393,7 @@ function scheduleView(){
     if(c.date&&c.status!=='cancelled'&&((seg==='upcoming')===(c.date>=t))) items.push({d:c.date,k:'00',c,ev:true});
   });
   items.sort((a,b)=>(a.d+a.k).localeCompare(b.d+b.k));if(seg==='past') items.reverse();
-  let h=`<div class="topbar" id="topbar"><button class="iconbtn" data-act="back" aria-label="Back">${ic('back')}Today</button><span class="t">Schedule</span>${state.clients.length?`<button class="iconbtn" data-act="newReh" aria-label="Schedule rehearsal">${ic('plus')}</button>`:'<span class="iconbtn" aria-hidden="true"></span>'}</div>
+  let h=`<div class="topbar" id="topbar"><button class="iconbtn back-btn" data-act="back">${ic('back')}Today</button><span class="t">Schedule</span>${state.clients.length?`<button class="iconbtn" data-act="newReh" aria-label="Schedule rehearsal">${ic('plus')}</button>`:'<span class="iconbtn" aria-hidden="true"></span>'}</div>
   <header class="pagehead"><h1 class="large-title">Schedule</h1><p class="page-sub">Rehearsals and event days across all clients</p></header>
   <div class="seg" style="margin-top:12px">${[['upcoming','Upcoming'],['past','Past']].map(([k,l])=>`<button data-act="schedSeg" data-s="${k}" aria-pressed="${seg===k}">${l}</button>`).join('')}</div>`;
   if(!items.length) return h+emptyHero(seg==='upcoming'?'Nothing scheduled. Plan a rehearsal and it shows up here.':'No past rehearsals yet.',state.clients.length&&seg==='upcoming'?`<button class="btn primary" data-act="newReh">${ic('calplus')}Schedule rehearsal</button>`:'');
@@ -474,11 +474,13 @@ function moreView(){
   return h;
 }
 // Each template opens in its own sheet; edits save as you type.
+function fitText(el){if(!el) return;el.style.height='auto';el.style.height=el.scrollHeight+'px'}
 function tplSheet(k){
   const custom=k in state.settings.templates;
   openSheet(TPL_NAMES[k],`<div data-tpl-sheet="${k}"><textarea class="msg-card" data-tpl="${k}" rows="${Math.max(8,tplText(k).split('\n').length+1)}" aria-label="${TPL_NAMES[k]}">${esc(tplText(k))}</textarea>
   <p class="group-foot">Words in braces fill in automatically: ${TPL_VARS}</p>
   ${custom?`<button class="btn block" style="margin-top:12px" data-act="resetTpl" data-k="${k}">Reset to default</button>`:''}</div>`);
+  fitText(document.querySelector('[data-tpl]'));
 }
 
 /* ================= render ================= */
@@ -650,6 +652,7 @@ function composer(){
   <p class="group-foot">Tap the text to edit it before sending. To change a template for good, edit it in Settings.</p>
   <a class="btn wa block msg-send" id="waLink" target="_blank" rel="noopener" href="${esc(waHref(to,text))}">${ic('wa')}Send on WhatsApp</a>
   <button class="btn ghost block msg-copy" data-act="copyMsg">Copy text</button>`);
+  fitText($('#msg'));
   const on=document.querySelector('.msg-chips [aria-pressed="true"]');if(on&&on.scrollIntoView) on.scrollIntoView({inline:'center',block:'nearest'});
 }
 function updateWaLink(){const a=$('#waLink'),m=$('#msg'),p=$('#toPhone');if(a&&m) a.href=waHref(p?p.value:'',m.value)}
@@ -828,10 +831,10 @@ $('#importFile').addEventListener('change',e=>{const f=e.target.files[0];if(!f) 
 let setTimer=null;
 document.addEventListener('input',e=>{
   const t=e.target;
-  if(t.id==='msg'||t.id==='toPhone'){if(t.id==='msg'){t.style.height='auto';t.style.height=t.scrollHeight+'px'}updateWaLink();return}
+  if(t.id==='msg'||t.id==='toPhone'){if(t.id==='msg') fitText(t);updateWaLink();return}
   if(t.id==='q'){ui.q=t.value;$('#clientList').innerHTML=clientListHTML();return}
   if(t.dataset.set){state.settings[t.dataset.set]=t.value;clearTimeout(setTimer);setTimer=setTimeout(save,400);return}
-  if(t.dataset.tpl){state.settings.templates[t.dataset.tpl]=t.value;clearTimeout(setTimer);setTimer=setTimeout(save,400);return}
+  if(t.dataset.tpl){fitText(t);state.settings.templates[t.dataset.tpl]=t.value;clearTimeout(setTimer);setTimer=setTimeout(save,400);return}
 });
 document.addEventListener('change',e=>{
   const t=e.target;
