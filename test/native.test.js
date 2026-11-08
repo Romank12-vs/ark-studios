@@ -125,8 +125,28 @@ test('sendTest shows one notification now', async () => {
   const n = ln.calls.at(-1)[1].notifications[0];
   assert.equal(n.id, 1);
   assert.equal(n.channelId, 'reminders');
+  assert.equal(n.title, 'Test notification');
+  assert.equal(n.isExactNotification, false);
   assert.deepEqual(n.extra, { kind: 'test' });
   assert.equal('schedule' in n, false);
+});
+test('a rejecting createChannel (Android 7) still schedules the plan and the test', async () => {
+  const reject = () => { throw new Error('UNAVAILABLE'); };
+  const ln = fakeLN({ createChannel: reject });
+  const item = { id: 5, at: 1e12, title: 't', body: 'b', extra: {} };
+  assert.equal(await withPlugins({ LocalNotifications: ln.plugin }, () => N.notifications.replaceAll([item])), true);
+  assert.equal(ln.calls.at(-1)[0], 'schedule');
+  const ln2 = fakeLN({ createChannel: reject });
+  assert.equal(await withPlugins({ LocalNotifications: ln2.plugin }, () => N.notifications.sendTest()), true);
+  assert.equal(ln2.calls.at(-1)[0], 'schedule');
+});
+test('documentsAllowed follows the storage permission and never blocks on a plugin hiccup', async () => {
+  const run = r => withPlugins({ Filesystem: { checkPermissions: async () => { if(r instanceof Error) throw r; return r; } } }, () => N.documentsAllowed());
+  assert.equal(await run({ publicStorage: 'granted' }), true);
+  assert.equal(await run({ publicStorage: 'denied' }), false);
+  assert.equal(await run({ publicStorage: 'prompt' }), false);
+  assert.equal(await run(new Error('boom')), true);
+  assert.equal(await N.documentsAllowed(), false);
 });
 test('onTap passes the notification’s extra', async () => {
   const ln = fakeLN();

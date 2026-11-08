@@ -52,7 +52,12 @@ async function writeBackup({state, today, fs}){
   const text = backupText(state);
   const first = C.backupFileName(today);
   const second = 'ark-studios-backup-' + today + '-2.json';
-  const name = (await tryWrite(fs, first, text)) ? first : (await tryWrite(fs, second, text)) ? second : null;
+  let name = null;
+  if(await tryWrite(fs, first, text)){
+    name = first;
+    // an earlier fallback copy for today would now rank as newer than this file when pruning
+    try { if(((await fs.list()) || []).includes(second)) await fs.remove(second); } catch(e){ /* best effort */ }
+  } else if(await tryWrite(fs, second, text)) name = second;
   if(name) await prune(fs, name);
   return name;
 }

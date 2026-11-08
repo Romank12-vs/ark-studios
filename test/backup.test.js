@@ -49,6 +49,11 @@ test('autoBackup falls back when today’s file can’t be overwritten', async (
   const fs = fakeFs([], ['ark-studios-backup-2026-11-08.json']);
   assert.equal((await B.autoBackup({ state: state(), now: NOW, today: T, fs })).name, 'ark-studios-backup-2026-11-08-2.json');
 });
+test('a later successful main write removes the stale -2 file', async () => {
+  const fs = fakeFs(['ark-studios-backup-2026-11-08-2.json']);
+  assert.equal((await B.autoBackup({ state: state(), now: NOW, today: T, fs })).name, 'ark-studios-backup-2026-11-08.json');
+  assert.deepEqual(fs.files, ['ark-studios-backup-2026-11-08.json']);
+});
 test('autoBackup reports a failed write and touches nothing else', async () => {
   const fs = fakeFs([], ['ark-studios-backup-2026-11-08.json', 'ark-studios-backup-2026-11-08-2.json']);
   assert.deepEqual(await B.autoBackup({ state: state(), now: NOW, today: T, fs }), { ok: false, at: NOW, name: null });

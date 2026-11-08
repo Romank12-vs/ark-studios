@@ -84,6 +84,17 @@ async function deleteDocument(path){
     return false;
   }
 }
+// Whether a Documents write can go ahead without a system storage prompt. On Android 7–10 each Filesystem call
+// prompts when storage isn't granted, so background backups check first. A plugin hiccup resolves true; web: false.
+async function documentsAllowed(){
+  const fsys = plugin('Filesystem');
+  if(!fsys) return false;
+  try{
+    return (await fsys.checkPermissions()).publicStorage === 'granted';
+  }catch(e){
+    return true;
+  }
+}
 // A light haptic tick (step ticked, swipe action, payment recorded). Web: a 10 ms vibration where supported.
 // A swipe action and its handler can both call tap(); calls within 150 ms of the last buzz are ignored.
 let lastBuzz = -Infinity;
@@ -121,7 +132,7 @@ const notifications = {
     try{
       await ln.cancelAll();
       if(!items || !items.length) return true;
-      await ln.createChannel(REMINDER_CHANNEL);
+      try{ await ln.createChannel(REMINDER_CHANNEL); }catch(e){} // Android < 8 has no channels and rejects this
       let exact = false;
       try{ exact = (await ln.checkExactNotificationSetting()).exact_alarm === 'granted'; }catch(e){}
       await ln.schedule({notifications: items.map(i => ({
@@ -139,11 +150,11 @@ const notifications = {
     const ln = plugin('LocalNotifications');
     if(!ln) return false;
     try{
-      await ln.createChannel(REMINDER_CHANNEL);
+      try{ await ln.createChannel(REMINDER_CHANNEL); }catch(e){} // Android < 8 has no channels and rejects this
       await ln.schedule({notifications: [{
-        id: TEST_ID, title: 'Reminders are on',
+        id: TEST_ID, title: 'Test notification',
         body: 'Rehearsal reminders and the morning summary will look like this.',
-        channelId: REMINDER_CHANNEL.id, extra: {kind: 'test'}
+        channelId: REMINDER_CHANNEL.id, isExactNotification: false, extra: {kind: 'test'}
       }]});
       return true;
     }catch(e){
@@ -159,6 +170,6 @@ const notifications = {
   }
 };
 
-const api = {backAction, barStyleFor, isNative, onBackButton, onResume, onPause, exitApp, setBarStyle, shareTextFile, writeDocument, listDocuments, deleteDocument, tap, notifications};
+const api = {backAction, barStyleFor, isNative, onBackButton, onResume, onPause, exitApp, setBarStyle, shareTextFile, writeDocument, listDocuments, deleteDocument, documentsAllowed, tap, notifications};
 if(typeof module !== 'undefined' && module.exports) module.exports = api; else window.ArkNative = api;
 })();

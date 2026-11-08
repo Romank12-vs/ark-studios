@@ -831,9 +831,9 @@ document.addEventListener('click',async e=>{
     case 'copyMsg':try{await navigator.clipboard.writeText($('#msg').value);toast('Message copied')}catch(err){$('#msg').select();toast('Select all and copy')}break;
 
     case 'remToggle':{
-      const rem=state.settings.reminders,k=b.dataset.k;
-      if(!rem[k]&&!await ensureNotifPermission()){render(false);break}
-      rem[k]=!rem[k];save();render(false);break;}
+      const rem=state.settings.reminders,k=b.dataset.k,turnOn=!rem[k]; // decided before the await, so a double tap can't flip twice
+      if(turnOn&&!await ensureNotifPermission()){render(false);break}
+      rem[k]=turnOn;save();render(false);break;}
     case 'remLead':state.settings.reminders.leadMins=+b.dataset.v;save();render(false);break;
     case 'remTest':{
       if(!await ensureNotifPermission()){render(false);toast(TEST_FAIL);break}
@@ -905,7 +905,7 @@ async function downloadBackup(){
 async function shareBackup(){
   const ok=await ArkNative.shareTextFile(backupFileName(todayISO()),ArkBackup.backupText(state),'application/json');
   if(ok){state.settings.lastSharedBackupAt=Date.now();quietSave();if(cur().v==='home') render(false);toast('Backup shared')}
-  else toast('Backup not saved');
+  else toast('Backup not shared');
   return !!ok;
 }
 // Android app only, one at a time: a backup file once a day when something changed. Never throws into the lifecycle callers.
@@ -914,7 +914,9 @@ async function runAutoBackup(){
   if(!ArkNative.isNative()||backupBusy) return;
   backupBusy=true;
   try{
-    const r=await ArkBackup.autoBackup({state,now:Date.now(),today:todayISO(),fs:ArkBackup.fsFor(ArkNative)});
+    if(!ArkBackup.needsAutoBackup(state)) return;
+    // Android 7–10 prompt for storage on every Documents call, and the prompt itself pauses/resumes the app: don't loop after Deny.
+    const r=await ArkNative.documentsAllowed()?await ArkBackup.autoBackup({state,now:Date.now(),today:todayISO(),fs:ArkBackup.fsFor(ArkNative)}):{ok:false};
     if(!r) return;
     const st=state.settings;
     if(r.ok){st.lastAutoBackupAt=r.at;quietSave();if(cur().v==='more') render(false)}
