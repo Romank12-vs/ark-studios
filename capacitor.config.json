@@ -3,6 +3,10 @@
   "appName": "ARK Studios",
   "webDir": "www",
   "backgroundColor": "#FBF4F0",
+  "server": {
+    "androidScheme": "https",
+    "hostname": "localhost"
+  },
   "plugins": {
     "SystemBars": {
       "insetsHandling": "css",

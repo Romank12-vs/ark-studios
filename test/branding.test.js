@@ -28,3 +28,11 @@ test('android app name and id', () => {
   assert.match(fs.readFileSync('android/app/src/main/res/values/strings.xml', 'utf8'), /<string name="app_name">ARK Studios<\/string>/);
   assert.match(fs.readFileSync('android/app/build.gradle', 'utf8'), /applicationId "com\.arkstudios\.app"/);
 });
+
+// All client data lives in localStorage tied to the WebView origin (https://localhost). Pinning it
+// means a future Capacitor upgrade that changes the default can never make the data seem to vanish.
+test('android WebView origin is pinned', () => {
+  const cfg = JSON.parse(fs.readFileSync('capacitor.config.json', 'utf8'));
+  assert.equal(cfg.server && cfg.server.androidScheme, 'https');
+  assert.equal(cfg.server && cfg.server.hostname, 'localhost');
+});
