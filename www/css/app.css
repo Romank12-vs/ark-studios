@@ -298,3 +298,32 @@ svg.i.row-chev{flex:none;width:16px;height:16px;color:var(--muted);opacity:.6}
 .row-sub .badge{margin-left:4px}
 .chips{gap:6px}
 .chip{padding:6px 11px;font-size:.875rem}
+
+/* Client page */
+.back-btn{gap:2px;color:var(--accent);font-weight:500;padding-left:2px}
+.text-btn{color:var(--accent);font-weight:600;padding:0 10px}
+.client-name{font-size:28px;line-height:1.1;margin:4px 0 4px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.hero .page-sub .badge{margin-left:4px}
+.hero-btns{display:flex;gap:10px;margin-top:14px}
+.hero-btns .grow{flex:1}
+.hero-btns .call{width:52px;padding:0;color:var(--accent)}
+.tab-summary{margin:14px 4px 0}
+.perf-title{display:flex;align-items:center;gap:8px;min-width:0;color:var(--muted)}
+.perf-title .order{width:24px;height:24px;font-size:.8125rem}
+.perf-title .clip{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--ink);font-weight:600}
+.perf-title .tail{flex:none;white-space:nowrap}
+.group-head .more-btn{margin:-12px -10px -12px 0;color:var(--accent)}
+.group-foot{font-size:13px;color:var(--muted);margin:6px 16px 0}
+.row.add{color:var(--accent);font-weight:600}
+.row.danger-row{color:var(--warn);font-weight:600;justify-content:center}
+.tone-accent{color:var(--accent)}
+.dots{letter-spacing:1px}
+.tick{flex:none;width:44px;height:44px;border-radius:50%;border:1.5px solid var(--line);background:transparent;color:var(--accent);display:inline-flex;align-items:center;justify-content:center;padding:0}
+.tick:active{background:var(--accent-soft)}
+.row-end.amt{color:var(--ink);font-weight:600}
+.switch{flex:none;position:relative;width:51px;height:31px;border-radius:99px;background:var(--line);transition:background .2s}
+.switch::after{content:"";position:absolute;top:2px;left:2px;width:27px;height:27px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.25);transition:transform .2s}
+.switch.on{background:var(--done)}
+.switch.on::after{transform:translateX(20px)}
+@media (prefers-reduced-motion: reduce){.switch,.switch::after{transition:none}}
+.swipe-front.row{background:var(--surface)}

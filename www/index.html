@@ -32,7 +32,7 @@
 <script>
 (function(){
 "use strict";
-const {STEPS,V1_TPL,uid,pad,isoOf,todayISO,addDays,daysLeft,fmtDate,dayLabel,fmtTime,parseDur,fmtDur,money,num,waNumber,waHref,nextIdx,doneN,songsOf,readyOf,totals,isActive,upcomingReh,blank,normalize,BACKUP_MARKER,backupFileName,parseBackup}=window.TaalCore;
+const {STEPS,V1_TPL,uid,pad,isoOf,todayISO,addDays,daysLeft,fmtDate,dayLabel,fmtTime,parseDur,fmtDur,money,num,waNumber,waHref,nextIdx,doneN,nextStepKey,nextStepLabel,nextStepDoneLabel,songsOf,readyOf,totals,isActive,upcomingReh,blank,normalize,BACKUP_MARKER,backupFileName,parseBackup}=window.TaalCore;
 /* ================= constants ================= */
 const KEY='taal-v2', OLD_KEY='taal-choreo-v1';
 const STEP_DONE=['Song finalised','Editing done','Choreography done','Taught','Practice done'];
@@ -286,55 +286,59 @@ function clientListHTML(){
   return `<div class="group">${list.map(clientRow).join('')}</div>`;
 }
 
+const BACK_LABEL={home:'Today',clients:'Clients',money:'Money',schedule:'Schedule',todo:'Songs',more:'Settings'};
 function clientView(){
   const c=getC(cur().c); if(!c){ui.stack=[{v:'clients'}];return clientsView()}
-  const tabk=cur().tab||'songs';
-  const meta=[c.event,fmtDate(c.date,{weekday:'short',day:'numeric',month:'short',year:'numeric'}),c.venue].filter(Boolean).map(esc).join(', ');
-  let h=`<div class="topbar" id="topbar"><button class="iconbtn" data-act="back" aria-label="Back">${ic('back')}</button><span class="t">${esc(c.name)}</span><button class="iconbtn" data-act="editClient" data-c="${c.id}" aria-label="Edit client">${ic('edit')}</button></div>
-  <section class="hero"><h1 class="display">${esc(c.name)}</h1>${meta?`<div class="meta">${meta}</div>`:''}
-  <div class="badges">${statusBadge(c)}${whenBadge(c)}</div>
-  <div class="btns"><button class="btn wa" data-act="compose" data-c="${c.id}" data-t="update">${ic('wa')}Send update</button>${c.phone?`<a class="btn ghost" href="tel:${esc(c.phone.replace(/\s/g,''))}">${ic('phone')}Call</a>`:''}<button class="btn ghost" data-act="compose" data-c="${c.id}" data-t="runsheet">${ic('list')}Run sheet</button></div></section>
-  <div class="segbar"><div class="seg" role="tablist">${[['songs','Songs'],['reh','Rehearsals'],['pay','Payments'],['info','Details']].map(([k,l])=>`<button role="tab" data-act="ctab" data-t="${k}" aria-pressed="${tabk===k}" aria-selected="${tabk===k}">${l}</button>`).join('')}</div></div>`;
-  h+=tabk==='songs'?songsTab(c):tabk==='reh'?rehTab(c):tabk==='pay'?payTab(c):infoTab(c);
-  return h;
+  let tabk=cur().tab||'songs'; if(!['songs','reh','pay'].includes(tabk)) tabk='songs';
+  const prev=ui.stack[ui.stack.length-2], d=c.date?daysLeft(c.date):null, songs=songsOf(c);
+  const when=d===null?'':d<0?'event passed':d===0?'event today':d===1?'tomorrow':d+' days left';
+  const urgent=d!==null&&d>=0&&d<=7&&readyOf(c)<songs.length;
+  const meta=[c.event,c.date?fmtDate(c.date,{day:'numeric',month:'short'}):''].filter(Boolean).map(esc).join(' · ');
+  let h=`<div class="topbar" id="topbar"><button class="iconbtn back-btn" data-act="back">${ic('back')}${BACK_LABEL[prev&&prev.v]||'Back'}</button><span class="t">${esc(c.name)}</span><button class="iconbtn text-btn" data-act="editClient" data-c="${c.id}">Edit</button></div>
+  <section class="hero"><h1 class="display client-name">${esc(c.name)}</h1><p class="page-sub">${meta}${meta&&when?' · ':''}${when?`<span class="${urgent?'tone-warn':''}">${when}</span>`:''}${c.status!=='booked'?' '+statusBadge(c):''}</p>
+  <div class="hero-btns"><button class="btn wa grow" data-act="compose" data-c="${c.id}" data-t="update">${ic('wa')}Message</button>${c.phone?`<a class="btn ghost call" href="tel:${esc(c.phone.replace(/\s/g,''))}" aria-label="Call ${esc(c.name)}">${ic('phone')}</a>`:''}</div></section>
+  <div class="segbar"><div class="seg" role="tablist">${[['songs','Songs'],['reh','Rehearsals'],['pay','Money']].map(([k,l])=>`<button role="tab" data-act="ctab" data-t="${k}" aria-pressed="${tabk===k}" aria-selected="${tabk===k}">${l}</button>`).join('')}</div></div>`;
+  return h+(tabk==='songs'?songsTab(c):tabk==='reh'?rehTab(c):payTab(c));
 }
 function songsTab(c){
-  const songs=songsOf(c),counts=[0,0,0,0,0,0];songs.forEach(s=>counts[nextIdx(s)]++);
-  const total=songs.reduce((a,s)=>a+(s.dur||0),0);
+  const songs=songsOf(c),ready=readyOf(c),total=songs.reduce((a,s)=>a+(s.dur||0),0),notFinal=songs.filter(s=>!s.steps.final).length;
   let h='';
-  if(songs.length){
-    h+=`<div class="stats"><span class="stat"><b>${counts[5]}</b>/${songs.length} ready</span>`;
-    for(let i=0;i<5;i++) if(counts[i]) h+=`<span class="stat"><b>${counts[i]}</b> ${NEXT_UI[i].toLowerCase()}</span>`;
-    if(total) h+=`<span class="stat">Total <b>${fmtDur(total)}</b></span>`;
-    if(c.songsIncluded) h+=`<span class="stat">Package: <b>${songs.length}/${esc(c.songsIncluded)}</b> songs</span>`;
-    h+='</div>';
-    if(counts[0]) h+=`<button class="btn sm ghost" style="margin-top:6px" data-act="compose" data-c="${c.id}" data-t="finalize">${ic('wa')}Ask client to finalise ${counts[0]} song${counts[0]>1?'s':''}</button>`;
-  }
+  if(songs.length) h+=`<p class="page-sub tab-summary">${ready} of ${songs.length} ready${total?' · total '+fmtDur(total):''}${c.songsIncluded?' · package '+songs.length+'/'+esc(c.songsIncluded):''}</p>`;
   c.performances.forEach((p,i)=>{
-    const pr=p.songs.filter(s=>nextIdx(s)===5).length,pd=p.songs.reduce((a,s)=>a+(s.dur||0),0);
-    const bits=[p.type,p.format,p.performers.length?p.performers.length+' performer'+(p.performers.length>1?'s':''):p.people].filter(Boolean).map(esc).join(', ');
-    h+=`<section class="perf"><div class="perf-head"><span class="order" title="Order on event day">${i+1}</span><h2>${esc(p.title)}</h2>
-      ${i>0?`<button class="iconbtn" data-act="movePerf" data-c="${c.id}" data-p="${p.id}" data-d="-1" aria-label="Move up">${ic('up')}</button>`:''}${i<c.performances.length-1?`<button class="iconbtn" data-act="movePerf" data-c="${c.id}" data-p="${p.id}" data-d="1" aria-label="Move down">${ic('down')}</button>`:''}
-      <button class="iconbtn" data-act="editPerf" data-c="${c.id}" data-p="${p.id}" aria-label="Edit performance">${ic('edit')}</button></div>
-      <div class="perf-meta">${bits}${bits?'. ':''}${p.songs.length?`${pr}/${p.songs.length} ready${pd?', '+fmtDur(pd):''}`:'No songs yet'}</div>
-      ${p.props?`<div class="note">Props and costume: ${esc(p.props)}</div>`:''}
-      ${p.songs.map(s=>songRow(c,p,s)).join('')}
-      <button class="add-row" data-act="newSong" data-c="${c.id}" data-p="${p.id}">+ Add song</button></section>`;
+    const pr=p.songs.filter(s=>nextIdx(s)===5).length;
+    h+=`<div class="group-head"><span class="perf-title"><span class="order" title="Order on event day">${i+1}</span><span class="clip">${esc(p.title)}</span><span class="tail">&nbsp;· ${pr} of ${p.songs.length} ready</span></span><button class="iconbtn more-btn" data-act="perfMenu" data-c="${c.id}" data-p="${p.id}" aria-label="Options for ${esc(p.title)}">${ic('more')}</button></div>
+    <div class="group">${p.songs.map(s=>songRow(c,p,s)).join('')}<button class="row add" data-act="newSong" data-c="${c.id}" data-p="${p.id}">${ic('plus')}Add song</button></div>
+    ${p.props?`<p class="group-foot">Props and costume: ${esc(p.props)}</p>`:''}`;
   });
-  h+=`<div style="margin-top:24px"><button class="btn primary block" data-act="newPerf" data-c="${c.id}">${ic('plus')}Add performance</button></div>`;
+  if(notFinal) h+=`<div class="group" style="margin-top:16px"><button class="row" data-act="compose" data-c="${c.id}" data-t="finalize">${ic('wa')}<span class="row-main"><span class="row-title">Ask to finalise ${notFinal} song${notFinal>1?'s':''}</span></span>${ic('chev','row-chev')}</button></div>`;
+  h+=`<div style="margin-top:16px"><button class="btn primary block" data-act="newPerf" data-c="${c.id}">${ic('plus')}Add performance</button></div>`;
   if(!c.performances.length) h+=`<p class="muted small" style="text-align:center;margin-top:12px">Add a performance like “Bride entry” or “Cousins group”, then add its songs. Their order here becomes the event-day run sheet.</p>`;
   return h;
 }
+// One row per song: dots + next step, a round tick for the next step, and the same action on a left swipe.
 function songRow(c,p,s){
-  const i=nextIdx(s);
-  const links=(s.ref?`<a class="btn sm ghost" href="${esc(s.ref)}" target="_blank" rel="noopener">${ic('play')}Reference</a>`:'')+(s.tutorial?`<button class="btn sm ghost" data-act="shareTut" data-c="${c.id}" data-p="${p.id}" data-s="${s.id}">${ic('wa')}Share practice video</button>`:'');
-  return `<div class="song">
-    <button class="song-main" data-act="editSong" data-c="${c.id}" data-p="${p.id}" data-s="${s.id}">
-      <span class="t">${esc(s.title)}${s.artist?`<small>${esc(s.artist)}</small>`:''}<span class="nx s${i}">${NEXT_UI[i]}</span></span><span class="d">${fmtDur(s.dur)}</span></button>
-    ${s.cut?`<div class="note">✂️ ${esc(s.cut)}</div>`:''}
-    <div class="steps">${STEPS.map(st=>`<button class="step ${s.steps[st.k]?'on':''}" aria-pressed="${!!s.steps[st.k]}" aria-label="${st.l}: ${esc(s.title)}" data-act="toggle" data-c="${c.id}" data-p="${p.id}" data-s="${s.id}" data-k="${st.k}">${st.l}</button>`).join('')}</div>
-    ${links?`<div class="songlinks">${links}</div>`:''}
-  </div>`;
+  const ready=nextIdx(s)===5, ids=`data-c="${c.id}" data-p="${p.id}" data-s="${s.id}"`;
+  const dots=STEPS.map(st=>s.steps[st.k]?'●':'○').join('');
+  const front=`<div class="swipe-front row"><button class="row-main row-tap" data-act="songSheet" ${ids}><span class="row-title">${esc(s.title)}</span><span class="row-sub ${ready?'tone-done':'tone-accent'}"><span class="dots" aria-hidden="true">${dots}</span> ${nextStepLabel(s)}</span></button>${s.dur?`<span class="row-end">${fmtDur(s.dur)}</span>`:''}${ready?'':`<button class="tick" data-act="stepNext" ${ids} aria-label="Mark ${nextStepDoneLabel(s).toLowerCase()}">${ic('check')}</button>`}</div>`;
+  return ready?`<div>${front}</div>`:`<div class="swipe" data-swipe><div class="swipe-act"><button data-act="stepNext" ${ids}>${ic('check')}${nextStepDoneLabel(s)}</button></div>${front}</div>`;
+}
+function songSheet(c,p,s){
+  const ids=`data-c="${c.id}" data-p="${p.id}" data-s="${s.id}"`;
+  openSheet(esc(s.title),`<div data-sheet-song="${s.id}">
+  ${s.artist||s.dur?`<p class="page-sub" style="margin:-8px 0 12px">${esc([s.artist,fmtDur(s.dur)].filter(Boolean).join(' · '))}</p>`:''}
+  <div class="group">${STEPS.map((st,i)=>`<button class="row" data-act="toggle" ${ids} data-k="${st.k}" aria-pressed="${!!s.steps[st.k]}"><span class="row-main"><span class="row-title">${STEP_DONE[i]}</span></span><span class="switch ${s.steps[st.k]?'on':''}" aria-hidden="true"></span></button>`).join('')}</div>
+  ${s.cut?`<div class="group-head"><span>Editing notes</span></div><p class="note">✂️ ${esc(s.cut)}</p>`:''}
+  ${s.ref||s.tutorial?`<div class="group" style="margin-top:16px">${s.ref?`<a class="row" href="${esc(s.ref)}" target="_blank" rel="noopener">${ic('play')}<span class="row-main"><span class="row-title">Reference video</span></span>${ic('chev','row-chev')}</a>`:''}${s.tutorial?`<button class="row" data-act="shareTut" ${ids}>${ic('wa')}<span class="row-main"><span class="row-title">Share practice video</span></span>${ic('chev','row-chev')}</button>`:''}</div>`:''}
+  ${s.notes?`<div class="group-head"><span>Notes</span></div><p class="note">${esc(s.notes)}</p>`:''}
+  <div class="btns fill" style="margin-top:16px"><button class="btn" data-act="editSong" ${ids}>${ic('edit')}Edit song</button></div></div>`);
+}
+function perfMenu(c,p){
+  const i=c.performances.indexOf(p),ids=`data-c="${c.id}" data-p="${p.id}"`;
+  const bits=[p.type,p.format,p.performers.length?p.performers.length+' performer'+(p.performers.length>1?'s':''):''].filter(Boolean).join(' · ');
+  openSheet(esc(p.title),`${bits?`<p class="page-sub" style="margin:-8px 0 12px">${esc(bits)}</p>`:''}<div class="group">
+  <button class="row" data-act="editPerf" ${ids}>${ic('edit')}<span class="row-main"><span class="row-title">Edit performance</span></span></button>
+  ${i>0?`<button class="row" data-act="movePerf" ${ids} data-d="-1">${ic('up')}<span class="row-main"><span class="row-title">Move up</span></span></button>`:''}
+  ${i<c.performances.length-1?`<button class="row" data-act="movePerf" ${ids} data-d="1">${ic('down')}<span class="row-main"><span class="row-title">Move down</span></span></button>`:''}</div>`);
 }
 function rehCard(c,r,showClient){
   const a=attendCount(c,r),past=r.date<todayISO();
@@ -345,38 +349,38 @@ function rehCard(c,r,showClient){
    <button class="grow" style="background:none;border:0;padding:0;text-align:left" data-act="editReh" data-c="${c.id}" data-r="${r.id}"><b>${showClient?esc(c.name):esc(dayLabel(r.date))}</b><small>${sub}</small></button>
    ${stateBadge||`<button class="btn sm wa" data-act="compose" data-c="${c.id}" data-t="rehearsal" data-r="${r.id}" aria-label="Send reminder">${ic('wa')}</button>`}</div>`;
 }
+// A client's rehearsal as a grouped row; upcoming ones swipe left for Remind.
+function rehRow(c,r){
+  const a=attendCount(c,r),past=r.date<todayISO(),where=r.place==='Venue'&&c.venue?c.venue:r.place;
+  const badge=r.status==='done'?`<span class="badge b-done">Done${a.of?' '+a.n+'/'+a.of:''}</span>`:r.status==='cancelled'?'<span class="badge b-cancelled">Cancelled</span>':past?'<span class="badge b-soon">Mark done?</span>':'';
+  const front=`<div class="swipe-front row"><button class="row-main row-tap" data-act="editReh" data-c="${c.id}" data-r="${r.id}"><span class="row-title">${esc(dayLabel(r.date))}${r.time?' · '+esc(fmtTime(r.time)):''}</span><span class="row-sub">${esc([perfNames(c,r.perfIds).join(', ')||'All performances',where,r.mins+' min'].join(' · '))}</span></button>${badge||ic('chev','row-chev')}</div>`;
+  return r.status==='planned'&&!past?`<div class="swipe" data-swipe><div class="swipe-act"><button class="wa" data-act="compose" data-c="${c.id}" data-t="rehearsal" data-r="${r.id}">${ic('wa')}Remind</button></div>${front}</div>`:`<div>${front}</div>`;
+}
 function rehTab(c){
   const t=todayISO(),done=c.rehearsals.filter(r=>r.status==='done').length;
   const up=c.rehearsals.filter(r=>r.status==='planned'&&r.date>=t).sort((a,b)=>(a.date+a.time).localeCompare(b.date+b.time));
   const past=c.rehearsals.filter(r=>!(r.status==='planned'&&r.date>=t)).sort((a,b)=>(b.date+b.time).localeCompare(a.date+a.time));
   const inc=+c.rehearsalsIncluded||0;
-  let h=`<div class="moneybox" style="margin-top:6px"><div class="row" style="display:flex;justify-content:space-between;align-items:baseline"><b style="font-size:1.1rem">${done}${inc?' of '+inc:''} rehearsals done</b><span class="muted small">${up.length} planned</span></div>
+  let h=`<div class="moneybox" style="margin-top:14px"><div style="display:flex;justify-content:space-between;align-items:baseline;gap:12px"><b style="font-size:1.1rem">${done}${inc?' of '+inc:''} rehearsals done</b><span class="muted small">${up.length} planned</span></div>
   ${inc?`<div class="meter"><i style="width:${Math.min(100,done/inc*100)}%"></i></div>${done+up.length>inc?`<div class="small" style="color:var(--warn)">Planned rehearsals go ${done+up.length-inc} over the package. Consider adding an extra-rehearsal charge.</div>`:''}`:''}</div>
   <div class="btns fill" style="margin-top:12px"><button class="btn primary" data-act="newReh" data-c="${c.id}">${ic('calplus')}Schedule rehearsal</button>${up.length?`<button class="btn wa" data-act="compose" data-c="${c.id}" data-t="rehearsal">${ic('wa')}Remind</button>`:''}</div>`;
-  if(up.length){h+=`<div class="sec"><div class="sec-head"><h2>Upcoming</h2></div><div class="list">${up.map(r=>rehCard(c,r)).join('')}</div></div>`}
-  if(past.length){h+=`<div class="sec"><div class="sec-head"><h2>Past</h2></div><div class="list">${past.map(r=>rehCard(c,r)).join('')}</div></div>`}
+  if(up.length) h+=`<div class="group-head"><span>Upcoming</span></div><div class="group">${up.map(r=>rehRow(c,r)).join('')}</div>`;
+  if(past.length) h+=`<div class="group-head"><span>Past</span></div><div class="group">${past.map(r=>rehRow(c,r)).join('')}</div>`;
   if(!c.rehearsals.length) h+=`<p class="muted small" style="text-align:center;margin-top:16px">Schedule rehearsals to send reminders, take attendance and track the package.</p>`;
   return h;
 }
 function payTab(c){
   const {total,paid,bal}=totals(c);
-  let h=`<div class="moneybox" style="margin-top:6px"><div class="three"><div><b>${money(total)}</b><span>Total</span></div><div><b style="color:var(--done)">${money(paid)}</b><span>Received</span></div><div><b style="color:${bal>0?'var(--warn)':'var(--ink)'}">${money(Math.max(bal,0))}</b><span>${bal<0?'Overpaid '+money(-bal):'Balance'}</span></div></div>
+  let h=`<div class="moneybox" style="margin-top:14px"><div class="three"><div><b>${money(total)}</b><span>Total</span></div><div><b style="color:var(--done)">${money(paid)}</b><span>Received</span></div><div><b style="color:${bal>0?'var(--warn)':'var(--ink)'}">${money(Math.max(bal,0))}</b><span>${bal<0?'Overpaid '+money(-bal):'Balance'}</span></div></div>
   <div class="meter"><i style="width:${total?Math.min(100,paid/total*100):0}%"></i></div></div>
   <div class="btns fill" style="margin-top:12px"><button class="btn primary" data-act="newPay" data-c="${c.id}">${ic('plus')}Record payment</button>${bal>0?`<button class="btn wa" data-act="compose" data-c="${c.id}" data-t="payment">${ic('wa')}Ask for payment</button>`:''}</div>
-  <div class="sec"><div class="sec-head"><h2>Charges</h2><button class="link" data-act="newCharge" data-c="${c.id}">+ Add</button></div>`;
-  h+=c.charges.length?`<div class="list">${c.charges.map(x=>`<button class="li" data-act="editCharge" data-c="${c.id}" data-x="${x.id}"><div class="grow"><b>${esc(x.label)}</b></div><span class="amt">${x.amount<0?'−':''}${money(Math.abs(x.amount))}</span></button>`).join('')}</div>`:`<p class="muted small">Add the package price and any extras like props, travel or background dancers.</p>`;
-  h+=`</div><div class="sec"><div class="sec-head"><h2>Payments received</h2>${c.payments.length?`<button class="link" data-act="compose" data-c="${c.id}" data-t="receipt">Send receipt</button>`:''}</div>`;
+  <div class="group-head"><span>Charges</span></div><div class="group">`;
+  h+=c.charges.map(x=>`<button class="row" data-act="editCharge" data-c="${c.id}" data-x="${x.id}"><span class="row-main"><span class="row-title">${esc(x.label)}</span></span><span class="row-end amt">${x.amount<0?'−':''}${money(Math.abs(x.amount))}</span></button>`).join('');
+  h+=`<button class="row add" data-act="newCharge" data-c="${c.id}">${ic('plus')}Add charge</button></div>`;
+  if(!c.charges.length) h+=`<p class="group-foot">Add the package price and any extras like props, travel or background dancers.</p>`;
   const pays=c.payments.slice().sort((a,b)=>b.date.localeCompare(a.date));
-  h+=pays.length?`<div class="list">${pays.map(x=>`<button class="li" data-act="editPay" data-c="${c.id}" data-x="${x.id}"><div class="grow"><b>${esc(fmtDate(x.date))}</b><small>${esc(x.mode)}${x.note?', '+esc(x.note):''}</small></div><span class="amt" style="color:var(--done)">${money(x.amount)}</span></button>`).join('')}</div>`:`<p class="muted small">No payments yet.</p>`;
-  return h+'</div>';
-}
-function infoTab(c){
-  const row=(k,v)=>v?`<div class="li"><dl class="grow" style="margin:0"><dt>${k}</dt><dd>${v}</dd></dl></div>`:'';
-  let h=`<div class="list info" style="margin-top:6px">${row('Phone',c.phone?`<a href="tel:${esc(c.phone.replace(/\s/g,''))}">${esc(c.phone)}</a>`:'')}${row('Event',esc(c.event))}${row('Event date',esc(fmtDate(c.date,{weekday:'long',day:'numeric',month:'long',year:'numeric'})))}${row('Venue',esc(c.venue))}${row('Package',[c.songsIncluded?esc(c.songsIncluded)+' songs':'',c.rehearsalsIncluded?esc(c.rehearsalsIncluded)+' rehearsals':''].filter(Boolean).join(', '))}${row('Found you through',esc(c.source))}${row('Added on',esc(fmtDate(isoOf(new Date(c.createdAt)))))}</div>`;
-  if(c.notes) h+=`<div class="sec"><div class="sec-head"><h2>Notes</h2></div><p class="note" style="color:var(--ink)">${esc(c.notes)}</p></div>`;
-  h+=`<div class="sec"><div class="sec-head"><h2>Booking status</h2></div><div class="seg">${STATUSES.map(s=>`<button data-act="setStatus" data-c="${c.id}" data-s="${s.k}" aria-pressed="${c.status===s.k}">${s.l}</button>`).join('')}</div>
-  ${c.status==='done'?`<button class="btn wa block" style="margin-top:12px" data-act="compose" data-c="${c.id}" data-t="thanks">${ic('wa')}Send thank-you and ask for a review</button>`:''}</div>
-  <div class="sec btns"><button class="btn ghost" data-act="editClient" data-c="${c.id}">${ic('edit')}Edit details</button><button class="btn ghost" data-act="compose" data-c="${c.id}" data-t="custom">${ic('wa')}Custom message</button><button class="btn danger" data-act="delClient" data-c="${c.id}">Delete client</button></div>`;
+  h+=`<div class="group-head"><span>Payments received</span></div>`;
+  h+=pays.length?`<div class="group">${pays.map(x=>`<div class="swipe" data-swipe><div class="swipe-act"><button data-act="compose" data-c="${c.id}" data-t="receipt">${ic('check')}Receipt</button></div><div class="swipe-front row"><button class="row-main row-tap" data-act="editPay" data-c="${c.id}" data-x="${x.id}"><span class="row-title">${esc(fmtDate(x.date))}</span><span class="row-sub">${esc(x.mode)}${x.note?' · '+esc(x.note):''}</span></button><span class="row-end amt" style="color:var(--done)">${money(x.amount)}</span></div></div>`).join('')}</div>`:`<p class="group-foot">No payments yet.</p>`;
   return h;
 }
 
@@ -491,7 +495,10 @@ const clientSelect=sel=>`<label class="field"><span>Client</span><select id="f_c
 function clientForm(c){
   const n=!c;c=c||{status:'booked'};
   const pkg=c.charges?'':`<div class="two"><label class="field"><span>Package price (₹)</span><input type="number" inputmode="numeric" id="f_pkg" placeholder="e.g. 35000"></label><label class="field"><span>Advance paid (₹)</span><input type="number" inputmode="numeric" id="f_adv" placeholder="Optional"></label></div>`;
-  openSheet(n?'New client':'Edit client',`
+  const statusSeg=n?'':`<div class="group-head"><span>Booking status</span></div><div class="seg" id="statusSeg">${STATUSES.map(s=>`<button data-act="setStatus" data-c="${c.id}" data-s="${s.k}" aria-pressed="${c.status===s.k}">${s.l}</button>`).join('')}</div>
+  <button class="btn wa block" id="thanksBtn" style="margin-top:12px" ${c.status==='done'?'':'hidden'} data-act="compose" data-c="${c.id}" data-t="thanks">${ic('wa')}Send thank-you and ask for a review</button>
+  <div class="group" style="margin-top:16px"><button class="row danger-row" data-act="delClient" data-c="${c.id}">Delete client</button></div>`;
+  openSheet(n?'New client':'Edit client',`${n?'':`<p class="page-sub" style="margin:-8px 0 12px">Added ${esc(fmtDate(isoOf(new Date(c.createdAt))))}${c.source?' · via '+esc(c.source):''}</p>`}
   <label class="field"><span>Client name</span><input type="text" id="f_name" value="${esc(c.name)}" placeholder="e.g. Priya & Arjun" autocomplete="off"></label>
   <label class="field"><span>WhatsApp number</span><input type="tel" id="f_phone" value="${esc(c.phone)}" placeholder="98765 43210"><small>Indian 10-digit numbers get +91 automatically.</small></label>
   <label class="field"><span>Event</span><input type="text" id="f_event" value="${esc(c.event)}" placeholder="e.g. Sharma wedding sangeet"></label>
@@ -501,7 +508,7 @@ function clientForm(c){
   ${pkg}
   <label class="field"><span>Found you through</span><select id="f_source">${opt(SOURCES,c.source,'Choose…')}</select></label>
   <label class="field"><span>Notes</span><textarea id="f_notes" rows="3" placeholder="Preferences, family members, anything to remember">${esc(c.notes)}</textarea></label>
-  <button class="btn primary block" data-act="saveClient" data-c="${c.id||''}">${n?'Add client':'Save changes'}</button>`);
+  <button class="btn primary block" data-act="saveClient" data-c="${c.id||''}">${n?'Add client':'Save changes'}</button>${statusSeg}`);
 }
 function perfForm(c,p){
   const n=!p;p=p||{performers:[]};
@@ -651,8 +658,8 @@ document.addEventListener('click',async e=>{
         if(adv) nc.payments.push({id:uid(),date:todayISO(),amount:adv,mode:'UPI',note:'Advance'});
         state.clients.push(nc);save();closeSheet();go('client',{c:nc.id,tab:'songs'});toast('Client added');
       }break;}
-    case 'delClient':{const sn=snap();state.clients=state.clients.filter(x=>x!==c);save();ui.stack=[{v:'clients'}];render(true);toast(c.name+' deleted',sn);break;}
-    case 'setStatus':c.status=b.dataset.s;save();render(false);toast('Marked '+(STATUSES.find(x=>x.k===c.status)||{}).l.toLowerCase());break;
+    case 'delClient':{closeSheet();const sn=snap();state.clients=state.clients.filter(x=>x!==c);save();ui.stack=[{v:'clients'}];render(true);toast(c.name+' deleted',sn);break;}
+    case 'setStatus':c.status=b.dataset.s;save();render(false);if($('#statusSeg')){$('#statusSeg').querySelectorAll('button').forEach(x=>x.setAttribute('aria-pressed',x.dataset.s===c.status));const fst=$('#f_status');if(fst) fst.value=c.status;const tb=$('#thanksBtn');if(tb) tb.hidden=c.status!=='done'}toast('Marked '+(STATUSES.find(x=>x.k===c.status)||{}).l.toLowerCase());break;
 
     case 'newPerf':perfForm(c);break;
     case 'editPerf':perfForm(c,p);break;
@@ -665,7 +672,7 @@ document.addEventListener('click',async e=>{
       if(p) Object.assign(p,d);else c.performances.push({id:uid(),people:'',songs:[],...d});
       save();closeSheet();render(false);toast(p?'Performance saved':'Performance added');break;}
     case 'delPerf':{const sn=snap();c.performances=c.performances.filter(x=>x!==p);c.rehearsals.forEach(r=>r.perfIds=r.perfIds.filter(id=>id!==p.id));save();closeSheet();render(false);toast(p.title+' deleted',sn);break;}
-    case 'movePerf':{const i=c.performances.indexOf(p),j=i+(+b.dataset.d);if(j<0||j>=c.performances.length) return;[c.performances[i],c.performances[j]]=[c.performances[j],c.performances[i]];save();render(false);break;}
+    case 'movePerf':{const i=c.performances.indexOf(p),j=i+(+b.dataset.d);if(j<0||j>=c.performances.length) return;closeSheet();[c.performances[i],c.performances[j]]=[c.performances[j],c.performances[i]];save();render(false);break;}
 
     case 'newSong':songForm(c,p);setTimeout(()=>{const f=$('#f_stitle');if(f) f.focus()},60);break;
     case 'editSong':songForm(c,p,s);break;
@@ -678,8 +685,11 @@ document.addEventListener('click',async e=>{
       if(b.dataset.more){songForm(c,p);toast('Song added');setTimeout(()=>{const f=$('#f_stitle');if(f) f.focus()},60)}else{closeSheet();toast(s?'Song saved':'Song added')}
       break;}
     case 'delSong':{const sn=snap();p.songs=p.songs.filter(x=>x!==s);save();closeSheet();render(false);toast(s.title+' deleted',sn);break;}
-    case 'toggle':{const k=b.dataset.k;s.steps[k]=!s.steps[k];save();render(false);const i=STEPS.findIndex(x=>x.k===k);
+    case 'toggle':{const k=b.dataset.k;s.steps[k]=!s.steps[k];save();ArkNative.tap();render(false);if(document.querySelector(`[data-sheet-song="${s.id}"]`)) songSheet(c,p,s);const i=STEPS.findIndex(x=>x.k===k);
       if(s.steps[k]&&nextIdx(s)===5) toast('🎉 '+s.title+' is ready');else toast(s.steps[k]?STEP_DONE[i]+': '+s.title:STEPS[i].l+' unmarked');break;}
+    case 'stepNext':{const k=nextStepKey(s);if(!k) return;s.steps[k]=true;save();ArkNative.tap();render(false);const i=STEPS.findIndex(x=>x.k===k);toast(nextIdx(s)===5?'🎉 '+s.title+' is ready':STEP_DONE[i]+': '+s.title);break;}
+    case 'songSheet':songSheet(c,p,s);break;
+    case 'perfMenu':perfMenu(c,p);break;
     case 'shareTut':ui.compose={c:c.id,t:'tutorial',pid:p.id,sid:s.id};composer();break;
 
     case 'newReh':rehForm(c);break;
@@ -764,6 +774,7 @@ document.addEventListener('change',e=>{
   if(t.id==='f_client'&&document.querySelector('[data-act=savePay]')){const c=getC(t.value);const sm=$('#f_amt')&&$('#f_amt').nextElementSibling;if(c){const bal=totals(c).bal;$('#f_amt').placeholder=bal>0?bal:'';if(sm&&sm.tagName==='SMALL') sm.textContent=bal>0?'Balance is '+money(bal):''}}
 });
 
+ArkSwipe.attachSwipe(document.getElementById('app'),ArkNative.tap); // swipe actions buzz when they run
 ArkNative.onBackButton(()=>{
   const a=ArkNative.backAction({sheetOpen:sheet.open,stackLen:ui.stack.length});
   if(a==='closeSheet') closeSheet(); else if(a==='back') back(); else ArkNative.exitApp();

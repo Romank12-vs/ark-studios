@@ -76,3 +76,9 @@ test('next step labels', () => {
   assert.equal(C.nextStepLabel(ready), 'Ready');
   assert.equal(C.nextStepDoneLabel(ready), null);
 });
+
+test('index.html imports every core helper', () => {
+  const html = require('node:fs').readFileSync('www/index.html', 'utf8');
+  const imported = new Set(/const \{([^}]+)\}=window\.TaalCore;/.exec(html)[1].split(',').map(x => x.trim()));
+  for (const name of Object.keys(C)) assert.ok(imported.has(name), `${name} is exported by core.js but not imported in index.html`);
+});
