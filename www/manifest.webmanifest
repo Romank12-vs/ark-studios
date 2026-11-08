@@ -1,6 +1,6 @@
 {
-  "name": "Taal: choreography studio",
-  "short_name": "Taal",
+  "name": "ARK Studios: choreography studio",
+  "short_name": "ARK Studios",
   "description": "Clients, songs, rehearsals and payments for choreographers, with WhatsApp updates.",
   "start_url": "./",
   "scope": "./",

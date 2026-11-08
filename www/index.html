@@ -3,13 +3,13 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Taal: choreography studio</title>
+<title>ARK Studios: choreography studio</title>
 <link rel="manifest" href="manifest.webmanifest">
 <meta name="theme-color" content="#B4236B">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
-<meta name="apple-mobile-web-app-title" content="Taal">
+<meta name="apple-mobile-web-app-title" content="ARK Studios">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <link rel="icon" type="image/png" href="icons/icon-192.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -249,6 +249,7 @@ dialog[open]{animation:up .22s ease-out}
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 <input type="file" id="importFile" accept=".json,application/json,text/plain" hidden>
 
+<script src="js/version.js"></script>
 <script src="js/core.js"></script>
 <script>
 (function(){
@@ -331,45 +332,14 @@ let state=blank();
 try{const raw=localStorage.getItem(KEY)||localStorage.getItem(OLD_KEY);if(raw) state=normalize(JSON.parse(raw))}catch(e){}
 
 let ui={stack:[{v:'home'}],clientFilter:'booked',q:'',schedSeg:'upcoming',todoStage:-1,compose:null,pendingBack:false};
-let syncLabel='Saved on this device';
+const syncLabel='Saved on this device';
 
 /* ================= persistence ================= */
-let dbRef=null,dbBusy=false,dbAgain=false,dbTimer=null,dlCap=null;
 function save(){
   state.updatedAt=Date.now();
   try{localStorage.setItem(KEY,JSON.stringify(state))}catch(e){}
-  clearTimeout(dbTimer);dbTimer=setTimeout(pushDb,700);
 }
-async function pushDb(){
-  if(!dbRef) return; if(dbBusy){dbAgain=true;return}
-  dbBusy=true;
-  try{await dbRef.set({json:JSON.stringify(state),updatedAt:state.updatedAt});syncLabel='Synced to your Claude account'}
-  catch(e){syncLabel='Saved on this device (account sync paused)'}
-  dbBusy=false; if(dbAgain){dbAgain=false;pushDb()}
-}
-(async function connect(){
-  try{
-    if(!window.claude||typeof window.claude.use!=='function') return;
-    window.claude.use('downloads').then(d=>{dlCap=d}).catch(()=>{});
-    const [db,user]=await Promise.all([window.claude.use('db'),window.claude.use('user')]);
-    if(!db||!user) return;
-    const id=await user.id(); if(!id) return;
-    const ref=db.collection('data/users/'+id).doc('state');
-    const snap=await ref.get(); dbRef=ref;
-    if(snap.exists){
-      let remote=null;try{remote=normalize(JSON.parse((snap.data()||{}).json||'{}'))}catch(e){}
-      if(remote&&(remote.updatedAt||0)>(state.updatedAt||0)){
-        state=remote;try{localStorage.setItem(KEY,JSON.stringify(state))}catch(e){}
-        syncLabel='Synced to your Claude account';applyTheme();render(false);return;
-      }
-    }
-    syncLabel='Synced to your Claude account';
-    if(state.updatedAt) pushDb();
-    if(cur().v==='more') render(false);
-  }catch(e){dbRef=null}
-})();
 async function downloadFile(name,text,type){
-  if(dlCap){try{await dlCap.save({filename:name,data:new Blob([text],{type})});return true}catch(e){if(e&&e.code==='declined') return false}}
   try{const url=URL.createObjectURL(new Blob([text],{type}));const a=document.createElement('a');a.href=url;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),3000);return true}catch(e){return false}
 }
 
@@ -692,12 +662,12 @@ function moreView(){
   <p class="muted small">Words in braces fill in automatically: <code>{client}</code> <code>{event}</code> <code>{date}</code> <code>{venue}</code> <code>{countdown}</code> <code>{statusList}</code> <code>{pendingList}</code> <code>{finalizeList}</code> <code>{practiceList}</code> <code>{readyCount}</code> <code>{totalCount}</code> <code>{rehearsalDate}</code> <code>{rehearsalTime}</code> <code>{rehearsalPlace}</code> <code>{rehearsalItems}</code> <code>{total}</code> <code>{paid}</code> <code>{balance}</code> <code>{upiLine}</code> <code>{lastAmount}</code> <code>{runSheet}</code> <code>{studio}</code></p>`;
   TPL_ORDER.concat('tutorial').forEach(k=>{const custom=k in st.templates;h+=`<details class="tpl"><summary>${TPL_NAMES[k]}${custom?' <span class="badge b-booked">Edited</span>':''}</summary><div class="inner"><textarea data-tpl="${k}" rows="8">${esc(tplText(k))}</textarea>${custom?`<button class="btn sm ghost" style="margin-top:8px" data-act="resetTpl" data-k="${k}">Reset to default</button>`:''}</div></details>`});
   h+=`</section><section class="sec"><div class="sec-head"><h2>Backup and restore</h2></div>
-  <p class="muted small">Your data lives on this device${dbRef?' and in your Claude account':''}. Save a backup file now and then, especially before changing phones.</p>
+  <p class="muted small">Your data lives on this device. Save a backup file now and then, especially before changing phones.</p>
   <div class="btns"><button class="btn ghost" data-act="exportFile">Save backup file</button><button class="btn ghost" data-act="importPick">Restore from file</button><button class="btn ghost" data-act="copyBackup">Copy as text</button></div>
   <details class="tpl" style="margin-top:10px"><summary>Restore from pasted text</summary><div class="inner"><textarea id="backupBox" rows="4" placeholder="Paste backup text here"></textarea><button class="btn sm ghost" style="margin-top:8px" data-act="restorePaste">Restore</button></div></details></section>
   <section class="sec"><div class="sec-head"><h2>Install on your phone</h2></div><p class="muted small">Android: open the menu in Chrome and tap “Install app”. iPhone: tap Share in Safari, then “Add to Home Screen”.</p></section>
   <section class="sec"><button class="btn danger" data-act="wipe">Delete all data</button></section>
-  <p class="muted small" style="text-align:center;margin-top:28px">Taal ${state.clients.length} clients, ${state.clients.reduce((a,c)=>a+songsOf(c).length,0)} songs</p>`;
+  <p class="muted small" style="text-align:center;margin-top:28px">ARK Studios ${esc(APP_VERSION)} · ${state.clients.length} clients, ${state.clients.reduce((a,c)=>a+songsOf(c).length,0)} songs</p>`;
   return h;
 }
 
@@ -973,7 +943,7 @@ document.addEventListener('click',async e=>{
 });
 function restoreFrom(text){
   text=String(text||'').trim();if(!text){toast('Paste a backup first');return}
-  let d;try{d=parseBackup(text)}catch(e){toast('That doesn’t look like a Taal backup');return}
+  let d;try{d=parseBackup(text)}catch(e){toast('That doesn’t look like an ARK Studios backup');return}
   ui.pendingRestore=d;
   openSheet('Restore this backup?',`<p>It has ${d.clients.length} client${d.clients.length===1?'':'s'}${d.updatedAt?', last changed '+esc(fmtDate(isoOf(new Date(d.updatedAt)))):''}. Everything currently in the app will be replaced.</p><div class="btns fill"><button class="btn primary" data-act="doRestore">Restore backup</button><button class="btn ghost" data-act="close">Cancel</button></div>`);
 }
