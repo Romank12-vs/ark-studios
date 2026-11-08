@@ -17,7 +17,12 @@ test('manifest names', () => {
   assert.equal(m.short_name, 'ARK Studios');
 });
 
-test('version', () => assert.equal(require('../www/js/version.js').APP_VERSION, '1.0.0'));
+// Checks the shape only, so bumping APP_VERSION for a release never breaks the suite.
+test('version is a valid release version', () => {
+  const { APP_VERSION } = require('../www/js/version.js');
+  assert.match(APP_VERSION, /^\d+\.\d+\.\d+$/);
+  assert.doesNotThrow(() => require('../scripts/version.js').versionCode('v' + APP_VERSION));
+});
 
 test('android app name and id', () => {
   assert.match(fs.readFileSync('android/app/src/main/res/values/strings.xml', 'utf8'), /<string name="app_name">ARK Studios<\/string>/);
