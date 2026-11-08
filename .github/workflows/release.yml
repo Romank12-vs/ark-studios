@@ -1,0 +1,67 @@
+# Builds, signs and publishes ARK-Studios.apk as a GitHub Release when a vX.Y.Z tag is pushed.
+name: Release Android app
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: 21
+          cache: gradle
+
+      - run: npm ci
+      - run: npm test
+
+      - name: Check the tag matches APP_VERSION
+        run: node scripts/version.js check "$GITHUB_REF_NAME"
+
+      - run: npx cap sync android
+
+      - name: Decode the signing keystore
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+        run: |
+          test -n "$ANDROID_KEYSTORE_BASE64" || { echo "::error::The ANDROID_KEYSTORE_BASE64 secret is missing"; exit 1; }
+          echo "$ANDROID_KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/release.jks"
+          echo "ANDROID_KEYSTORE_PATH=$RUNNER_TEMP/release.jks" >> "$GITHUB_ENV"
+
+      - name: Build the signed APK
+        working-directory: android
+        env:
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleRelease --no-daemon \
+            -PversionName="$(node ../scripts/version.js name "$GITHUB_REF_NAME")" \
+            -PversionCode="$(node ../scripts/version.js code "$GITHUB_REF_NAME")"
+
+      - name: Verify the signature
+        run: |
+          cp android/app/build/outputs/apk/release/app-release.apk ARK-Studios.apk
+          BT="$ANDROID_HOME/build-tools/$(ls "$ANDROID_HOME/build-tools" | sort -V | tail -1)"
+          "$BT/apksigner" verify --print-certs ARK-Studios.apk
+
+      - name: Publish the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" ARK-Studios.apk \
+            --title "ARK Studios ${GITHUB_REF_NAME#v}" \
+            --notes "Install or update: download ARK-Studios.apk below and open it on your Android phone. Your data stays when you install over an older version."
