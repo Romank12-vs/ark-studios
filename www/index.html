@@ -250,6 +250,7 @@ dialog[open]{animation:up .22s ease-out}
 <script src="js/version.js"></script>
 <script src="js/core.js"></script>
 <script src="js/native.js"></script>
+<script src="js/update.js"></script>
 <script>
 (function(){
 "use strict";
@@ -429,6 +430,7 @@ function emptyHero(text,btns){return `<div class="empty"><div class="eq" aria-hi
 function homeView(){
   const st=state.settings, who=st.name?', '+esc(st.name.split(' ')[0]):'';
   let h=`<header class="pagehead"><p style="margin:0">${esc(fmtDate(todayISO(),{weekday:'long',day:'numeric',month:'long'}))}</p><h1 class="display">${greet()}${who}</h1></header>`;
+  if(ui.update) h+=`<section class="sec"><div class="list"><div class="li"><div class="grow"><b>ARK Studios ${esc(ui.update.version)} is available</b><small>Installs over this app. Your data stays.</small></div><a class="btn sm primary" href="${esc(ui.update.url)}">Download</a><button class="btn sm ghost" data-act="dismissUpdate">Not now</button></div></div></section>`;
   if(!state.clients.length){
     return h+emptyHero('Track every client’s performances, songs, rehearsals and payments, and send WhatsApp updates in one tap.',`<button class="btn primary" data-act="newClient">${ic('plus')}Add first client</button><button class="btn ghost" data-act="sample">Explore with sample data</button>`);
   }
@@ -845,6 +847,7 @@ document.addEventListener('click',async e=>{
     case 'todo':ui.todoStage=+b.dataset.s;go('todo');break;
     case 'todoStage':ui.todoStage=+b.dataset.s;render(false);break;
     case 'sample':sample();break;
+    case 'dismissUpdate':if(ui.update){state.settings.updateDismissedVersion=ui.update.version;ui.update=null;save();render(false)}break;
     case 'close':closeSheet();break;
     case 'toastAct':{const fn=toastFn;toastFn=null;$('#toast').classList.remove('show');if(fn) fn();break;}
 
@@ -978,8 +981,20 @@ ArkNative.onBackButton(()=>{
   const a=ArkNative.backAction({sheetOpen:sheet.open,stackLen:ui.stack.length});
   if(a==='closeSheet') closeSheet(); else if(a==='back') back(); else ArkNative.exitApp();
 });
+// Android app only: at most once a day, offer a newer release (the web version updates itself).
+async function maybeCheckUpdate(){
+  if(!ArkNative.isNative()) return;
+  const st=state.settings;
+  const r=await ArkUpdate.checkForUpdate({now:Date.now(),lastCheckAt:st.lastUpdateCheckAt,current:APP_VERSION,dismissed:st.updateDismissedVersion,fetchFn:(u,o)=>fetch(u,o)});
+  if(!r) return;
+  st.lastUpdateCheckAt=r.checkedAt;save();
+  ui.update=r.banner;
+  if(cur().v==='home') render(false);
+}
+ArkNative.onResume(maybeCheckUpdate);
 applyTheme();
 render(true);
+maybeCheckUpdate();
 // Web only: inside the APK the files ship with the app, and a worker could serve stale ones after an update.
 if('serviceWorker' in navigator&&location.protocol.startsWith('http')&&!ArkNative.isNative()){window.addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}))}
 })();
