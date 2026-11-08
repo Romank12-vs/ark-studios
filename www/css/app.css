@@ -364,3 +364,14 @@ details.more[open]>summary .more-chev{transform:rotate(180deg)}
 .more-body{padding-top:6px}
 .checks label{min-height:44px}
 .more-body{box-sizing:border-box} /* <details> content does not inherit box-sizing through its internal slot */
+
+/* Settings */
+.field-row{gap:12px;cursor:text}
+.field-row .row-label{flex:none;width:76px;font-weight:600}
+.field-row input{flex:1;min-width:0;border:0;background:transparent;padding:0;min-height:44px;text-align:right}
+.field-row input:focus{outline:none}
+.field-row:focus-within{box-shadow:inset 0 0 0 2px var(--accent-soft)}
+.row-details>summary{list-style:none;cursor:pointer}
+.row-details>summary::-webkit-details-marker{display:none}
+.row-details[open]>summary .more-chev{transform:rotate(180deg)}
+.row-details .more-body{padding:0 14px 14px}
