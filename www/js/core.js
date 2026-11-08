@@ -45,6 +45,12 @@ function normalize(s){
 }
 function nextIdx(s){for(let i=0;i<STEPS.length;i++) if(!s.steps[STEPS[i].k]) return i;return 5}
 const doneN=s=>STEPS.filter(st=>s.steps[st.k]).length;
+// Next-step wording for one-row songs: "Teach next" in the row, "Taught" on its tick button.
+const NEXT_VERB=['Finalise','Edit','Choreograph','Teach','Practise'];
+const DONE_VERB=['Finalised','Edited','Choreographed','Taught','Practised'];
+const nextStepKey=s=>{const i=nextIdx(s);return i<5?STEPS[i].k:null};
+const nextStepLabel=s=>{const i=nextIdx(s);return i<5?NEXT_VERB[i]+' next':'Ready'};
+const nextStepDoneLabel=s=>{const i=nextIdx(s);return i<5?DONE_VERB[i]:null};
 const songsOf=c=>c.performances.flatMap(p=>p.songs);
 const readyOf=c=>songsOf(c).filter(s=>nextIdx(s)===5).length;
 function totals(c){const total=c.charges.reduce((a,x)=>a+x.amount,0),paid=c.payments.reduce((a,x)=>a+x.amount,0);return {total,paid,bal:total-paid}}
@@ -61,6 +67,6 @@ function parseBackup(text){
   return d;
 }
 
-const api={STEPS,V1_TPL,uid,pad,isoOf,todayISO,addDays,daysLeft,fmtDate,dayLabel,fmtTime,parseDur,fmtDur,money,num,waNumber,waHref,nextIdx,doneN,songsOf,readyOf,totals,isActive,upcomingReh,blank,normalize,BACKUP_MARKER,backupFileName,parseBackup};
+const api={STEPS,V1_TPL,uid,pad,isoOf,todayISO,addDays,daysLeft,fmtDate,dayLabel,fmtTime,parseDur,fmtDur,money,num,waNumber,waHref,nextIdx,doneN,nextStepKey,nextStepLabel,nextStepDoneLabel,songsOf,readyOf,totals,isActive,upcomingReh,blank,normalize,BACKUP_MARKER,backupFileName,parseBackup};
 if(typeof module!=='undefined'&&module.exports) module.exports=api; else window.TaalCore=api;
 })();

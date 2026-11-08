@@ -65,3 +65,14 @@ test('backups: old and new markers restore, junk is rejected', () => {
   assert.throws(() => C.parseBackup(''), /not-a-backup/);
   assert.equal(C.backupFileName('2026-11-08'), 'ark-studios-backup-2026-11-08.json');
 });
+
+test('next step labels', () => {
+  const s = steps => ({ steps });
+  assert.equal(C.nextStepKey(s({})), 'final');
+  assert.equal(C.nextStepLabel(s({ final: true, edit: true, choreo: true })), 'Teach next');
+  assert.equal(C.nextStepDoneLabel(s({ final: true, edit: true, choreo: true })), 'Taught');
+  const ready = s({ final: true, edit: true, choreo: true, teach: true, practice: true });
+  assert.equal(C.nextStepKey(ready), null);
+  assert.equal(C.nextStepLabel(ready), 'Ready');
+  assert.equal(C.nextStepDoneLabel(ready), null);
+});
