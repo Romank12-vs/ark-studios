@@ -16,3 +16,25 @@ test('bar style follows theme', () => {
 });
 
 test('not native under Node', () => assert.equal(N.isNative(), false));
+
+const setNavigator = v => Object.defineProperty(globalThis, 'navigator', { value: v, configurable: true, writable: true });
+
+test('tap uses Capacitor Haptics in the app', () => {
+  const calls = [];
+  global.window = { Capacitor: { isNativePlatform: () => true, Plugins: { Haptics: { impact: o => calls.push(o) } } } };
+  N.tap();
+  delete global.window;
+  assert.deepEqual(calls, [{ style: 'LIGHT' }]);
+});
+
+test('tap falls back to vibrate on the web and never throws', () => {
+  const calls = [];
+  const original = globalThis.navigator;
+  global.window = {};
+  setNavigator({ vibrate: ms => calls.push(ms) });
+  N.tap();
+  delete global.window;
+  setNavigator(original);
+  assert.deepEqual(calls, [10]);
+  assert.doesNotThrow(() => N.tap());
+});

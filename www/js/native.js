@@ -50,7 +50,15 @@ async function shareTextFile(name, text, mime){
     return false;
   }
 }
+// A light haptic tick (step ticked, swipe action, payment recorded). Web: a 10 ms vibration where supported.
+function tap(){
+  try{
+    const haptics = plugin('Haptics');
+    if(haptics){ Promise.resolve(haptics.impact({style: 'LIGHT'})).catch(() => {}); return; }
+    if(typeof navigator !== 'undefined' && navigator && typeof navigator.vibrate === 'function') navigator.vibrate(10);
+  }catch(e){}
+}
 
-const api = {backAction, barStyleFor, isNative, onBackButton, onResume, exitApp, setBarStyle, shareTextFile};
+const api = {backAction, barStyleFor, isNative, onBackButton, onResume, exitApp, setBarStyle, shareTextFile, tap};
 if(typeof module !== 'undefined' && module.exports) module.exports = api; else window.ArkNative = api;
 })();
