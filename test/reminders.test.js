@@ -129,3 +129,23 @@ test('ids are stable and never collide across kinds', () => {
   assert.ok(Number.isInteger(a) && a >= 1e8 && a < 2e9);
   assert.equal(R.summaryNotifId('2026-11-08'), 20261108);
 });
+
+test('sync: off, missing permission, or schedule', () => {
+  const r = o => settings(o);
+  assert.equal(R.syncAction(r({}), 'granted'), 'cancel');
+  assert.equal(R.syncAction(r({ digest: true }), 'prompt'), 'switchOff');
+  assert.equal(R.syncAction(r({ rehearsal: true }), 'denied'), 'switchOff');
+  assert.equal(R.syncAction(r({ rehearsal: true }), 'granted'), 'schedule');
+});
+
+test('tapping a notification opens what still exists', () => {
+  const r = reh({ time: '18:30' });
+  const c = client({ rehearsals: [r] });
+  const s = state([c], {});
+  assert.deepEqual(R.tapTarget(s, { kind: 'rehearsal', clientId: c.id, rehearsalId: r.id }), { view: 'client', clientId: c.id, rehearsalId: r.id });
+  assert.deepEqual(R.tapTarget(s, { kind: 'rehearsal', clientId: c.id, rehearsalId: 'gone' }), { view: 'client', clientId: c.id, rehearsalId: null });
+  assert.deepEqual(R.tapTarget(s, { kind: 'rehearsal', clientId: 'gone', rehearsalId: r.id }), { view: 'home' });
+  assert.deepEqual(R.tapTarget(s, { kind: 'summary', date: '2026-11-08' }), { view: 'home' });
+  assert.deepEqual(R.tapTarget(s, {}), { view: 'home' });
+  assert.deepEqual(R.tapTarget(s, null), { view: 'home' });
+});

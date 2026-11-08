@@ -102,6 +102,21 @@ function planNotifications(state, now){
   return out.sort((a, b) => a.at - b.at).slice(0, MAX_NOTIFICATIONS);
 }
 
-const api = {MAX_NOTIFICATIONS, HORIZON_DAYS, rehearsalNotifId, summaryNotifId, summaryFor, planNotifications};
+function syncAction(rem, permission){
+  const r = rem || {};
+  if(!r.rehearsal && !r.digest) return 'cancel';
+  return permission === 'granted' ? 'schedule' : 'switchOff';
+}
+
+function tapTarget(state, extra){
+  const x = extra || {};
+  if(x.kind !== 'rehearsal') return {view: 'home'};
+  const c = (state.clients || []).find(k => k.id === x.clientId);
+  if(!c) return {view: 'home'};
+  const r = (c.rehearsals || []).find(k => k.id === x.rehearsalId);
+  return {view: 'client', clientId: c.id, rehearsalId: r ? r.id : null};
+}
+
+const api = {MAX_NOTIFICATIONS, HORIZON_DAYS, rehearsalNotifId, summaryNotifId, summaryFor, planNotifications, syncAction, tapTarget};
 if(typeof module !== 'undefined' && module.exports) module.exports = api; else window.ArkReminders = api;
 })();
