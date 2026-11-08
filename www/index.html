@@ -25,6 +25,7 @@
 
 <script src="js/version.js"></script>
 <script src="js/core.js"></script>
+<script src="js/backup.js"></script>
 <script src="js/today.js"></script>
 <script src="js/native.js"></script>
 <script src="js/swipe.js"></script>
@@ -220,6 +221,11 @@ function emptyHero(text,btns){return `<div class="empty"><div class="eq" aria-hi
 
 // "Long event name · 16 days": only the name shortens, the countdown stays visible.
 function splitTitle(t){const i=t.lastIndexOf(' · ');return i<0?`<span class="row-title">${esc(t)}</span>`:`<span class="row-title split"><span class="clip">${esc(t.slice(0,i))}</span><span class="tail">&nbsp;· ${esc(t.slice(i+3))}</span></span>`}
+function lastBackupLabel(ms){
+  if(!ms) return 'Not yet';
+  const d=new Date(ms);
+  return dayLabel(isoOf(d))+', '+fmtTime(pad(d.getHours())+':'+pad(d.getMinutes()));
+}
 function homeView(){
   const st=state.settings, t=todayISO();
   const eyebrow=esc(fmtDate(t,{weekday:'long',day:'numeric',month:'long'}))+' · '+greet()+(st.name?', '+esc(st.name.split(' ')[0]):'');
@@ -227,6 +233,10 @@ function homeView(){
   if(ui.update) h+=`<div class="group update-banner" style="margin-top:12px"><div class="row"><span class="row-main"><span class="row-title wrap">ARK Studios ${esc(ui.update.version)} is available</span><span class="row-sub wrap">Installs over this app. Your data stays.</span></span></div><div class="btns fill update-btns"><a class="btn sm primary" href="${esc(ui.update.url)}">Download</a><button class="btn sm ghost" data-act="dismissUpdate">Not now</button></div></div>`;
   if(!state.clients.length){
     return h+emptyHero('Track every client’s performances, songs, rehearsals and payments, and send WhatsApp updates in one tap.',`<button class="btn primary" data-act="newClient">${ic('plus')}Add first client</button><button class="btn ghost" data-act="sample">Explore with sample data</button><button class="btn ghost" data-act="importPick">Restore from a backup file</button>`);
+  }
+  if(ArkBackup.nudgeDue(state,Date.now())){
+    const nat=ArkNative.isNative();
+    h+=`<div class="group update-banner" style="margin-top:12px"><div class="row"><span class="row-main"><span class="row-title wrap">${nat?'Send this week’s backup to Google Drive or WhatsApp?':'Save this week’s backup file?'}</span><span class="row-sub wrap">${nat?'Keeps a copy safe off this phone.':'Keep it somewhere safe, like Google Drive.'}</span></span></div><div class="btns fill update-btns"><button class="btn sm primary" data-act="nudgeShare">${nat?'Share':'Save file'}</button><button class="btn sm ghost" data-act="nudgeLater">Later</button></div></div>`;
   }
   // rehearsals: today's, then the next one coming up
   const {items,next}=ArkToday.todayAgenda(state,t);
@@ -463,9 +473,9 @@ function moreView(){
   <div class="group-head"><span>Appearance</span></div>
   ${segOf('theme',[['auto','Auto'],['light','Light'],['dark','Dark']])}
   <div class="group-head"><span>Backup and restore</span></div>
-  <div class="group"><button class="row" data-act="exportFile"><span class="row-main"><span class="row-title">Save backup file</span></span>${chev}</button><button class="row" data-act="importPick"><span class="row-main"><span class="row-title">Restore from file</span></span>${chev}</button><button class="row" data-act="copyBackup"><span class="row-main"><span class="row-title">Copy as text</span></span>${chev}</button>
+  <div class="group">${ArkNative.isNative()?`<div class="row"><span class="row-main"><span class="row-title">Automatic backups</span></span><span class="row-end">${esc(lastBackupLabel(st.lastAutoBackupAt))}</span></div>`:''}<button class="row" data-act="exportFile"><span class="row-main"><span class="row-title">Save backup file</span></span>${chev}</button><button class="row" data-act="importPick"><span class="row-main"><span class="row-title">Restore from file</span></span>${chev}</button><button class="row" data-act="copyBackup"><span class="row-main"><span class="row-title">Copy as text</span></span>${chev}</button>
   <details class="row-details"><summary class="row"><span class="row-main"><span class="row-title">Restore from pasted text</span></span>${ic('down','more-chev')}</summary><div class="more-body"><textarea id="backupBox" rows="4" placeholder="Paste backup text here"></textarea><button class="btn block" style="margin-top:8px" data-act="restorePaste">Restore</button></div></details></div>
-  <p class="group-foot">Your data lives on this device. Save a backup file now and then, especially before changing phones.</p>
+  <p class="group-foot">${ArkNative.isNative()?'Every day you make changes, ARK Studios saves a backup to Documents/ARK Studios on this phone and keeps the last 14. They stay even if the app is uninstalled. Share one to Google Drive now and then.':'Your data lives on this device. Save a backup file now and then, especially before changing phones.'}</p>
   <div class="group-head"><span>About</span></div>
   <div class="group"><div class="row"><span class="row-main"><span class="row-title">ARK Studios</span></span><span class="row-end">${esc(APP_VERSION)}</span></div>
   <div class="row"><span class="row-main"><span class="row-title">On this device</span></span><span class="row-end">${state.clients.length} clients, ${state.clients.reduce((a,c)=>a+songsOf(c).length,0)} songs</span></div>
@@ -809,11 +819,17 @@ document.addEventListener('click',async e=>{
     case 'tplSheet':tplSheet(b.dataset.k);break;
     case 'resetTpl':delete state.settings.templates[b.dataset.k];save();render(false);if(document.querySelector('[data-tpl-sheet]')) tplSheet(b.dataset.k);toast('Template reset');break;
     case 'exportFile':{
-      const json=JSON.stringify({app:BACKUP_MARKER,...state},null,1);
-      // Blob downloads do nothing inside the Android WebView, so the app hands the file to the share sheet.
-      if(ArkNative.isNative()){const ok=await ArkNative.shareTextFile(backupFileName(todayISO()),json,'application/json');toast(ok?'Backup ready to save':'Backup not saved');break;}
-      const ok=await downloadFile(backupFileName(todayISO()),json,'application/json');toast(ok?'Backup saved':'Couldn’t save the file. Try “Copy as text”.');break;}
-    case 'copyBackup':{const txt=JSON.stringify({app:BACKUP_MARKER,...state});try{await navigator.clipboard.writeText(txt);toast('Backup copied. Paste it somewhere safe.')}catch(err){const bx=$('#backupBox');bx.value=txt;bx.closest('details').open=true;bx.select();toast('Backup shown below, copy it')}break;}
+      // Blob downloads do nothing inside the Android WebView, so the app writes to Documents and offers the share sheet.
+      if(ArkNative.isNative()){
+        if(!state.clients.length){toast('Nothing to back up yet');break;}
+        const name=await ArkBackup.writeBackup({state,today:todayISO(),fs:ArkBackup.fsFor(ArkNative)});
+        if(name){state.settings.lastAutoBackupAt=Date.now();quietSave();render(false);toast('Saved to Documents/ARK Studios',{label:'Share',fn:shareBackup})}
+        else await shareBackup();
+        break;}
+      await downloadBackup();break;}
+    case 'nudgeShare':if(ArkNative.isNative()) await shareBackup();else{await downloadBackup();if(cur().v==='home') render(false)}break;
+    case 'nudgeLater':state.settings.backupNudgeSnoozedUntil=Date.now()+ArkBackup.NUDGE_MS;quietSave();render(false);break;
+    case 'copyBackup':{const txt=JSON.stringify({app:BACKUP_MARKER,...state});try{await navigator.clipboard.writeText(txt);state.settings.lastSharedBackupAt=Date.now();quietSave();toast('Backup copied. Paste it somewhere safe.')}catch(err){const bx=$('#backupBox');bx.value=txt;bx.closest('details').open=true;bx.select();toast('Backup shown below, copy it')}break;}
     case 'importPick':$('#importFile').click();break;
     case 'restorePaste':restoreFrom($('#backupBox').value);break;
     case 'doRestore':{const d=ui.pendingRestore;if(!d) return;ui.pendingRestore=null;const sn=snap();state=normalize(d);save();applyTheme();closeSheet();tab('home');toast('Backup restored',sn);break;}
@@ -856,6 +872,31 @@ ArkNative.onBackButton(()=>{
   const a=ArkNative.backAction({sheetOpen:sheet.open,stackLen:ui.stack.length});
   if(a==='closeSheet') closeSheet(); else if(a==='back') back(); else ArkNative.exitApp();
 });
+async function downloadBackup(){
+  const ok=await downloadFile(backupFileName(todayISO()),ArkBackup.backupText(state),'application/json');
+  if(ok){state.settings.lastSharedBackupAt=Date.now();quietSave()}
+  toast(ok?'Backup saved':'Couldn’t save the file. Try “Copy as text”.');
+}
+// Hand the backup to the share sheet (Drive, WhatsApp...). It counts as shared only when the owner finishes the share.
+async function shareBackup(){
+  const ok=await ArkNative.shareTextFile(backupFileName(todayISO()),ArkBackup.backupText(state),'application/json');
+  if(ok){state.settings.lastSharedBackupAt=Date.now();quietSave();if(cur().v==='home') render(false);toast('Backup shared')}
+  else toast('Backup not saved');
+  return !!ok;
+}
+// Android app only, one at a time: a backup file once a day when something changed. Never throws into the lifecycle callers.
+let backupBusy=false;
+async function runAutoBackup(){
+  if(!ArkNative.isNative()||backupBusy) return;
+  backupBusy=true;
+  try{
+    const r=await ArkBackup.autoBackup({state,now:Date.now(),today:todayISO(),fs:ArkBackup.fsFor(ArkNative)});
+    if(!r) return;
+    const st=state.settings;
+    if(r.ok){st.lastAutoBackupAt=r.at;quietSave();if(cur().v==='more') render(false)}
+    else if(st.backupFailDay!==todayISO()){st.backupFailDay=todayISO();quietSave();toast('Auto-backup failed. Save a backup from Settings.')}
+  }catch(e){}finally{backupBusy=false}
+}
 // Android app only: at most once a day, offer a newer release (the web version updates itself).
 async function maybeCheckUpdate(){
   if(!ArkNative.isNative()) return;
@@ -866,10 +907,12 @@ async function maybeCheckUpdate(){
   ui.update=r.banner;
   if(cur().v==='home') render(false);
 }
-ArkNative.onResume(maybeCheckUpdate);
+ArkNative.onResume(()=>{maybeCheckUpdate();runAutoBackup()});
+ArkNative.onPause(runAutoBackup);
 applyTheme();
 render(true);
 maybeCheckUpdate();
+runAutoBackup();
 // Web only: inside the APK the files ship with the app, and a worker could serve stale ones after an update.
 if('serviceWorker' in navigator&&location.protocol.startsWith('http')&&!ArkNative.isNative()){window.addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}))}
 })();
