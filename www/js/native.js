@@ -29,6 +29,9 @@ function onBackButton(fn){
 function onResume(fn){
   const app = plugin('App'); if(app) app.addListener('resume', () => fn());
 }
+function onPause(fn){
+  const app = plugin('App'); if(app) app.addListener('pause', () => fn());
+}
 function exitApp(){
   const app = plugin('App'); if(app) app.exitApp();
 }
@@ -50,6 +53,37 @@ async function shareTextFile(name, text, mime){
     return false;
   }
 }
+// Files in the public Documents folder (auto-backups). Web or any error: false / null, never a throw.
+async function writeDocument(path, text){
+  const fsys = plugin('Filesystem');
+  if(!fsys) return false;
+  try{
+    await fsys.writeFile({path, data: text, directory: 'DOCUMENTS', encoding: 'utf8', recursive: true});
+    return true;
+  }catch(e){
+    return false;
+  }
+}
+async function listDocuments(dir){
+  const fsys = plugin('Filesystem');
+  if(!fsys) return null;
+  try{
+    const res = await fsys.readdir({path: dir, directory: 'DOCUMENTS'});
+    return ((res && res.files) || []).map(f => typeof f === 'string' ? f : f && f.name).filter(n => typeof n === 'string');
+  }catch(e){
+    return null;
+  }
+}
+async function deleteDocument(path){
+  const fsys = plugin('Filesystem');
+  if(!fsys) return false;
+  try{
+    await fsys.deleteFile({path, directory: 'DOCUMENTS'});
+    return true;
+  }catch(e){
+    return false;
+  }
+}
 // A light haptic tick (step ticked, swipe action, payment recorded). Web: a 10 ms vibration where supported.
 // A swipe action and its handler can both call tap(); calls within 150 ms of the last buzz are ignored.
 let lastBuzz = -Infinity;
@@ -64,6 +98,6 @@ function tap(now = Date.now()){
   }catch(e){}
 }
 
-const api = {backAction, barStyleFor, isNative, onBackButton, onResume, exitApp, setBarStyle, shareTextFile, tap};
+const api = {backAction, barStyleFor, isNative, onBackButton, onResume, onPause, exitApp, setBarStyle, shareTextFile, writeDocument, listDocuments, deleteDocument, tap};
 if(typeof module !== 'undefined' && module.exports) module.exports = api; else window.ArkNative = api;
 })();

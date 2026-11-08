@@ -46,3 +46,34 @@ test('a second tap within 150 ms does not buzz again', () => {
   delete global.window;
   assert.equal(calls.length, 2);
 });
+
+async function withPlugins(plugins, fn){
+  global.window = { Capacitor: { isNativePlatform: () => true, Plugins: plugins } };
+  try{ return await fn(); }finally{ delete global.window; }
+}
+
+test('writeDocument writes UTF-8 into Documents and creates the folder', async () => {
+  const calls = [];
+  const ok = await withPlugins({ Filesystem: { writeFile: async o => { calls.push(o); return { uri: 'file:///x' }; } } },
+    () => N.writeDocument('ARK Studios/a.json', '{}'));
+  assert.equal(ok, true);
+  assert.deepEqual(calls, [{ path: 'ARK Studios/a.json', data: '{}', directory: 'DOCUMENTS', encoding: 'utf8', recursive: true }]);
+});
+test('listDocuments returns file names', async () => {
+  const names = await withPlugins({ Filesystem: { readdir: async () => ({ files: [{ name: 'a.json', type: 'file' }, { name: 'b.json' }] }) } },
+    () => N.listDocuments('ARK Studios'));
+  assert.deepEqual(names, ['a.json', 'b.json']);
+});
+test('document helpers fail soft', async () => {
+  const boom = async () => { throw new Error('EACCES'); };
+  assert.equal(await withPlugins({ Filesystem: { writeFile: boom } }, () => N.writeDocument('x', '')), false);
+  assert.equal(await withPlugins({ Filesystem: { readdir: boom } }, () => N.listDocuments('x')), null);
+  assert.equal(await withPlugins({ Filesystem: { deleteFile: boom } }, () => N.deleteDocument('x')), false);
+  assert.equal(await N.writeDocument('x', ''), false);
+  assert.equal(await N.listDocuments('x'), null);
+});
+test('onPause listens for the app going to the background', async () => {
+  const events = [];
+  await withPlugins({ App: { addListener: e => events.push(e) } }, async () => N.onPause(() => {}));
+  assert.deepEqual(events, ['pause']);
+});
