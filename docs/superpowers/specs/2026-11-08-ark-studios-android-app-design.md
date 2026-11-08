@@ -48,7 +48,7 @@ origins as a Claude artifact and is inert everywhere else.
 | Stable APK link | `https://github.com/Romank12-vs/ark-studios/releases/latest/download/ARK-Studios.apk` |
 | Local tooling | Node 22+ (LTS) and JDK 21 installed on the Windows PC via `winget`, used to generate the Android project and the signing keystore; APKs are built in CI, not locally |
 | Signing key | Generated once; stored as encrypted GitHub Actions secrets; the owner keeps a copy in Google Drive |
-| Releases | v1.0 Ship → v1.1 Backups & reminders → v1.2 PDFs & money; each is an installable APK and gets its own implementation plan, written and approved before that milestone starts |
+| Releases | v1.0 Ship (shipped) → v1.1 Simpler "iOS warm" UI (see `2026-11-08-ark-studios-ios-warm-ui-design.md`) → v1.2 Backups & reminders → v1.3 PDFs & money; each is an installable APK and gets its own implementation plan, written and approved before that milestone starts. Sections 6 and 7 below keep their original "v1.1" / "v1.2" labels but now ship as v1.2 and v1.3 |
 
 Rejected: a TWA/PWABuilder wrapper (no offline reminders, no file backups, data tied to Chrome
 storage) and a rewrite in Flutter/React Native (discards a working, polished app).
