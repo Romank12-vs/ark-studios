@@ -74,6 +74,15 @@ function parseBackup(text){
   return d;
 }
 
-const api={LEAD_CHOICES,STEPS,V1_TPL,uid,pad,isoOf,todayISO,addDays,daysLeft,fmtDate,dayLabel,fmtTime,parseDur,fmtDur,money,num,waNumber,waHref,nextIdx,doneN,nextStepKey,nextStepLabel,nextStepDoneLabel,songsOf,readyOf,totals,isActive,upcomingReh,blank,normalize,BACKUP_MARKER,backupFileName,parseBackup};
+// The payment a receipt is for: the one with that id, else the latest by date (later in the list on a tie).
+function receiptPayment(c,id){
+  const ps=(c&&c.payments)||[];
+  const hit=id&&ps.find(x=>x.id===id);
+  if(hit) return hit;
+  let last=null;
+  for(const x of ps) if(!last||String(x.date||'').localeCompare(String(last.date||''))>=0) last=x;
+  return last;
+}
+const api={receiptPayment,LEAD_CHOICES,STEPS,V1_TPL,uid,pad,isoOf,todayISO,addDays,daysLeft,fmtDate,dayLabel,fmtTime,parseDur,fmtDur,money,num,waNumber,waHref,nextIdx,doneN,nextStepKey,nextStepLabel,nextStepDoneLabel,songsOf,readyOf,totals,isActive,upcomingReh,blank,normalize,BACKUP_MARKER,backupFileName,parseBackup};
 if(typeof module!=='undefined'&&module.exports) module.exports=api; else window.TaalCore=api;
 })();

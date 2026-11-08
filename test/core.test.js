@@ -101,3 +101,11 @@ test('normalize repairs reminder settings', () => {
   assert.deepEqual(r({ rehearsal: 'yes', leadMins: 45, digest: true, digestTime: '9am' }), { ...def, digest: true });
   assert.deepEqual(C.normalize(v2).settings.reminders, def);
 });
+
+test('receipt uses the chosen payment, else the latest', () => {
+  const c = { payments: [{ id: 'a', date: '2026-11-01' }, { id: 'b', date: '2026-11-05' }, { id: 'c', date: '2026-11-05' }] };
+  assert.equal(C.receiptPayment(c, 'a').id, 'a');
+  assert.equal(C.receiptPayment(c).id, 'c');
+  assert.equal(C.receiptPayment(c, 'gone').id, 'c');
+  assert.equal(C.receiptPayment({ payments: [] }), null);
+});

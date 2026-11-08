@@ -22,7 +22,7 @@ const setNavigator = v => Object.defineProperty(globalThis, 'navigator', { value
 test('tap uses Capacitor Haptics in the app', () => {
   const calls = [];
   global.window = { Capacitor: { isNativePlatform: () => true, Plugins: { Haptics: { impact: o => calls.push(o) } } } };
-  N.tap();
+  N.tap(1e13);
   delete global.window;
   assert.deepEqual(calls, [{ style: 'LIGHT' }]);
 });
@@ -32,9 +32,17 @@ test('tap falls back to vibrate on the web and never throws', () => {
   const original = globalThis.navigator;
   global.window = {};
   setNavigator({ vibrate: ms => calls.push(ms) });
-  N.tap();
+  N.tap(2e13);
   delete global.window;
   setNavigator(original);
   assert.deepEqual(calls, [10]);
   assert.doesNotThrow(() => N.tap());
+});
+
+test('a second tap within 150 ms does not buzz again', () => {
+  const calls = [], t = 3e13;
+  global.window = { Capacitor: { isNativePlatform: () => true, Plugins: { Haptics: { impact: o => calls.push(o) } } } };
+  N.tap(t); N.tap(t + 100); N.tap(t + 300);
+  delete global.window;
+  assert.equal(calls.length, 2);
 });

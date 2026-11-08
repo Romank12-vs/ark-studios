@@ -51,7 +51,12 @@ async function shareTextFile(name, text, mime){
   }
 }
 // A light haptic tick (step ticked, swipe action, payment recorded). Web: a 10 ms vibration where supported.
-function tap(){
+// A swipe action and its handler can both call tap(); calls within 150 ms of the last buzz are ignored.
+let lastBuzz = -Infinity;
+function tap(now = Date.now()){
+  const gap = now - lastBuzz;
+  if(gap >= 0 && gap < 150) return;
+  lastBuzz = now;
   try{
     const haptics = plugin('Haptics');
     if(haptics){ Promise.resolve(haptics.impact({style: 'LIGHT'})).catch(() => {}); return; }

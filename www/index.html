@@ -32,7 +32,7 @@
 <script>
 (function(){
 "use strict";
-const {LEAD_CHOICES,STEPS,V1_TPL,uid,pad,isoOf,todayISO,addDays,daysLeft,fmtDate,dayLabel,fmtTime,parseDur,fmtDur,money,num,waNumber,waHref,nextIdx,doneN,nextStepKey,nextStepLabel,nextStepDoneLabel,songsOf,readyOf,totals,isActive,upcomingReh,blank,normalize,BACKUP_MARKER,backupFileName,parseBackup}=window.TaalCore;
+const {receiptPayment,LEAD_CHOICES,STEPS,V1_TPL,uid,pad,isoOf,todayISO,addDays,daysLeft,fmtDate,dayLabel,fmtTime,parseDur,fmtDur,money,num,waNumber,waHref,nextIdx,doneN,nextStepKey,nextStepLabel,nextStepDoneLabel,songsOf,readyOf,totals,isActive,upcomingReh,blank,normalize,BACKUP_MARKER,backupFileName,parseBackup}=window.TaalCore;
 /* ================= constants ================= */
 const KEY='taal-v2', OLD_KEY='taal-choreo-v1';
 const STEP_DONE=['Song finalised','Editing done','Choreography done','Taught','Practice done'];
@@ -161,7 +161,7 @@ function msgVars(c,ctx={}){
   const countdown=d===null||d<0?'':d===0?(L==='english'?'The event is today! 🎉':'Aaj event hai! 🎉'):(L==='english'?`Only ${d} day${d>1?'s':''} to go!`:`Event mein sirf ${d} din baaki hain!`);
   const r=(ctx.rid&&getR(c,ctx.rid))||upcomingReh(c)[0];
   const {total,paid,bal}=totals(c);
-  const last=c.payments.slice().sort((a,b)=>b.date.localeCompare(a.date))[0];
+  const last=receiptPayment(c,ctx.xid);
   const st=state.settings;
   let tot=0;
   const run=c.performances.map((p,i)=>{const dur=p.songs.reduce((a,s)=>a+(s.dur||0),0);tot+=dur;
@@ -382,7 +382,7 @@ function payTab(c){
   if(!c.charges.length) h+=`<p class="group-foot">Add the package price and any extras like props, travel or background dancers.</p>`;
   const pays=c.payments.slice().sort((a,b)=>b.date.localeCompare(a.date));
   h+=`<div class="group-head"><span>Payments received</span></div>`;
-  h+=pays.length?`<div class="group">${pays.map(x=>`<div class="swipe" data-swipe><div class="swipe-act"><button data-act="compose" data-c="${c.id}" data-t="receipt">${ic('check')}Receipt</button></div><div class="swipe-front row"><button class="row-main row-tap" data-act="editPay" data-c="${c.id}" data-x="${x.id}"><span class="row-title">${esc(fmtDate(x.date))}</span><span class="row-sub">${esc(x.mode)}${x.note?' · '+esc(x.note):''}</span></button><span class="row-end amt" style="color:var(--done)">${money(x.amount)}</span></div></div>`).join('')}</div>`:`<p class="group-foot">No payments yet.</p>`;
+  h+=pays.length?`<div class="group">${pays.map(x=>`<div class="swipe" data-swipe><div class="swipe-act"><button data-act="compose" data-c="${c.id}" data-t="receipt" data-x="${x.id}">${ic('check')}Receipt</button></div><div class="swipe-front row"><button class="row-main row-tap" data-act="editPay" data-c="${c.id}" data-x="${x.id}"><span class="row-title">${esc(fmtDate(x.date))}</span><span class="row-sub">${esc(x.mode)}${x.note?' · '+esc(x.note):''}</span></button><span class="row-end amt" style="color:var(--done)">${money(x.amount)}</span></div></div>`).join('')}</div>`:`<p class="group-foot">No payments yet.</p>`;
   return h;
 }
 
@@ -756,7 +756,7 @@ document.addEventListener('click',async e=>{
     case 'delSong':{const sn=snap();p.songs=p.songs.filter(x=>x!==s);save();closeSheet();render(false);toast(s.title+' deleted',sn);break;}
     case 'toggle':{const k=b.dataset.k;s.steps[k]=!s.steps[k];save();ArkNative.tap();render(false);if(document.querySelector(`[data-sheet-song="${s.id}"]`)) songSheet(c,p,s);const i=STEPS.findIndex(x=>x.k===k);
       if(s.steps[k]&&nextIdx(s)===5) toast('🎉 '+s.title+' is ready');else toast(s.steps[k]?STEP_DONE[i]+': '+s.title:STEPS[i].l+' unmarked');break;}
-    case 'stepNext':{const k=nextStepKey(s);if(!k) return;s.steps[k]=true;save();ArkNative.tap();render(false);const i=STEPS.findIndex(x=>x.k===k);toast(nextIdx(s)===5?'🎉 '+s.title+' is ready':STEP_DONE[i]+': '+s.title);break;}
+    case 'stepNext':{const k=nextStepKey(s);if(!k) return;const sn=snap();s.steps[k]=true;save();ArkNative.tap();render(false);const i=STEPS.findIndex(x=>x.k===k);toast(nextIdx(s)===5?'🎉 '+s.title+' is ready':STEP_DONE[i]+': '+s.title,sn);break;}
     case 'songSheet':songSheet(c,p,s);break;
     case 'perfMenu':perfMenu(c,p);break;
     case 'shareTut':ui.compose={c:c.id,t:'tutorial',pid:p.id,sid:s.id};composer();break;
@@ -781,10 +781,11 @@ document.addEventListener('click',async e=>{
       const x=cc.payments.find(y=>y.id===b.dataset.x),amount=num(val('f_amt'));
       if(!amount){toast('Enter the amount');return}
       const d={amount,date:val('f_pdate')||todayISO(),mode:val('f_mode'),note:val('f_pnote')};
-      if(x) Object.assign(x,d);else cc.payments.push({id:uid(),...d});
+      const np=x?null:{id:uid(),...d};
+      if(x) Object.assign(x,d);else cc.payments.push(np);
       save();closeSheet();render(false);
       if(!x) ArkNative.tap();
-      if(!x) toast(money(amount)+' recorded',{label:'Send receipt',fn:()=>{ui.compose={c:cc.id,t:'receipt'};composer()}});else toast('Payment saved');
+      if(!x) toast(money(amount)+' recorded',{label:'Send receipt',fn:()=>{ui.compose={c:cc.id,t:'receipt',xid:np.id};composer()}});else toast('Payment saved');
       break;}
     case 'delPay':{const sn=snap();c.payments=c.payments.filter(x=>x.id!==b.dataset.x);save();closeSheet();render(false);toast('Payment deleted',sn);break;}
     case 'newCharge':chargeForm(c);break;
@@ -796,7 +797,7 @@ document.addEventListener('click',async e=>{
       save();closeSheet();render(false);toast(x?'Charge saved':'Charge added');break;}
     case 'delCharge':{const sn=snap();c.charges=c.charges.filter(x=>x.id!==b.dataset.x);save();closeSheet();render(false);toast('Charge deleted',sn);break;}
 
-    case 'compose':ui.compose={c:c.id,t:t||'update',rid:b.dataset.r||null};composer();break;
+    case 'compose':ui.compose={c:c.id,t:t||'update',rid:b.dataset.r||null,xid:b.dataset.x||null};composer();break;
     case 'tpl':ui.compose.t=t;composer();break;
     case 'msgTo':{const f=$('#toPhone'),l=$('#msgTo');if(f){f.hidden=false;f.focus()}if(l) l.hidden=true;break;}
     case 'copyMsg':try{await navigator.clipboard.writeText($('#msg').value);toast('Message copied')}catch(err){$('#msg').select();toast('Select all and copy')}break;
