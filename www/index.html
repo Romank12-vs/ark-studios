@@ -237,6 +237,13 @@ dialog[open]{animation:up .22s ease-out}
 .toast:not(.has-act){padding-right:16px}
 @media (prefers-reduced-motion: reduce){dialog[open]{animation:none}.toast{transition:none}.topbar .t{transition:none}}
 @media (min-width:700px){.kpis{grid-template-columns:repeat(3,1fr)}}
+
+/* swipe rows */
+.swipe{position:relative;overflow:hidden}
+.swipe-act{position:absolute;top:0;right:0;bottom:0;width:76px;display:flex}
+.swipe-act>*{flex:1;border:0;border-radius:0;color:#fff;background:var(--accent);font-weight:600;font-size:.8125rem;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px}
+.swipe-act>.wa{background:var(--wa)}
+.swipe-front{position:relative;background:var(--surface);touch-action:pan-y}
 </style>
 </head>
 <body>
@@ -251,6 +258,7 @@ dialog[open]{animation:up .22s ease-out}
 <script src="js/core.js"></script>
 <script src="js/today.js"></script>
 <script src="js/native.js"></script>
+<script src="js/swipe.js"></script>
 <script src="js/update.js"></script>
 <script>
 (function(){
