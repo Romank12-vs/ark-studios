@@ -18,3 +18,8 @@ test('manifest names', () => {
 });
 
 test('version', () => assert.equal(require('../www/js/version.js').APP_VERSION, '1.0.0'));
+
+test('android app name and id', () => {
+  assert.match(fs.readFileSync('android/app/src/main/res/values/strings.xml', 'utf8'), /<string name="app_name">ARK Studios<\/string>/);
+  assert.match(fs.readFileSync('android/app/build.gradle', 'utf8'), /applicationId "com\.arkstudios\.app"/);
+});

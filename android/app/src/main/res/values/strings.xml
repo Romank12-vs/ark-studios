@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">ARK Studios</string>
+    <string name="title_activity_main">ARK Studios</string>
+    <string name="package_name">com.arkstudios.app</string>
+    <string name="custom_url_scheme">com.arkstudios.app</string>
+</resources>

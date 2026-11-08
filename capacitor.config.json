@@ -1,0 +1,12 @@
+{
+  "appId": "com.arkstudios.app",
+  "appName": "ARK Studios",
+  "webDir": "www",
+  "backgroundColor": "#FBF4F0",
+  "plugins": {
+    "SystemBars": {
+      "insetsHandling": "css",
+      "initialViewportFitValueHint": "cover"
+    }
+  }
+}
