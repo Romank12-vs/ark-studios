@@ -6,7 +6,7 @@ const CACHE = 'ark-studios-v5';
 // this worker takes control, so the runtime cache alone would miss them). test/offline-shell.test.js
 // fails if index.html or fonts.css starts using a file that is not listed here.
 const SHELL = ['./', './index.html', './manifest.webmanifest',
-  './js/version.js', './js/core.js', './js/backup.js','./js/today.js', './js/native.js', './js/update.js', './js/swipe.js',
+  './js/version.js', './js/core.js', './js/backup.js','./js/reminders.js','./js/today.js', './js/native.js', './js/update.js', './js/swipe.js',
   './css/app.css', './fonts/fonts.css',
   './fonts/rozha-one-latin.woff2', './fonts/rozha-one-latin-ext.woff2',
   './icons/icon-192.png', './icons/apple-touch-icon.png'];

@@ -26,6 +26,7 @@
 <script src="js/version.js"></script>
 <script src="js/core.js"></script>
 <script src="js/backup.js"></script>
+<script src="js/reminders.js"></script>
 <script src="js/today.js"></script>
 <script src="js/native.js"></script>
 <script src="js/swipe.js"></script>
@@ -118,7 +119,7 @@ let ui={stack:[{v:'home'}],clientFilter:'booked',q:'',schedSeg:'upcoming',todoSt
 const syncLabel='Saved on this device';
 
 /* ================= persistence ================= */
-function save(){state.updatedAt=Date.now();quietSave()}
+function save(){state.updatedAt=Date.now();quietSave();remindersSoon()}
 function quietSave(){
   try{localStorage.setItem(KEY,JSON.stringify(state))}catch(e){}
 }
@@ -458,6 +459,18 @@ function todoView(){
 }
 
 const TPL_VARS='<code>{client}</code> <code>{event}</code> <code>{date}</code> <code>{venue}</code> <code>{countdown}</code> <code>{statusList}</code> <code>{pendingList}</code> <code>{finalizeList}</code> <code>{practiceList}</code> <code>{readyCount}</code> <code>{totalCount}</code> <code>{rehearsalDate}</code> <code>{rehearsalTime}</code> <code>{rehearsalPlace}</code> <code>{rehearsalItems}</code> <code>{total}</code> <code>{paid}</code> <code>{balance}</code> <code>{upiLine}</code> <code>{lastAmount}</code> <code>{runSheet}</code> <code>{studio}</code>';
+const LEAD_LABEL={30:'30 min',60:'1 hr',120:'2 hr'};
+function remindersHTML(){
+  if(!ArkNative.isNative()) return `<p class="group-foot">Reminders work in the Android app.</p>`;
+  const rem=state.settings.reminders;
+  const sw=(k,label)=>`<button class="row" data-act="remToggle" data-k="${k}" aria-pressed="${!!rem[k]}"><span class="row-main"><span class="row-title">${label}</span></span><span class="switch ${rem[k]?'on':''}" aria-hidden="true"></span></button>`;
+  return `<div class="group">${sw('rehearsal','Rehearsal reminders')}</div>
+  ${rem.rehearsal?`<p class="group-foot" style="margin-bottom:4px">Remind me</p><div class="seg">${LEAD_CHOICES.map(m=>`<button data-act="remLead" data-v="${m}" aria-pressed="${rem.leadMins===m}">${LEAD_LABEL[m]||m+' min'}</button>`).join('')}</div>`:''}
+  <div class="group" style="margin-top:12px">${sw('digest','Morning summary')}${rem.digest?`<label class="row field-row"><span class="row-label">Time</span><input type="time" data-rem="digestTime" value="${esc(rem.digestTime)}"></label>`:''}</div>
+  <div class="group" style="margin-top:12px"><button class="row" data-act="remTest"><span class="row-main"><span class="row-title">Send test notification</span></span></button></div>
+  <p class="group-foot">On Xiaomi, Oppo, Vivo and Realme phones, allow Autostart for ARK Studios and set its battery use to No restrictions, or reminders may arrive late or not at all.</p>
+  ${ui.notifBlocked?`<p class="group-foot">Notifications are blocked for ARK Studios. Allow them in Android Settings → Apps → ARK Studios → Notifications, then turn the reminder on again.</p>`:''}`;
+}
 function moreView(){
   const st=state.settings, chev=ic('chev','row-chev');
   const segOf=(key,opts)=>`<div class="seg">${opts.map(([k,l])=>`<button data-act="setPref" data-k="${key}" data-v="${k}" aria-pressed="${st[key]===k}">${l}</button>`).join('')}</div>`;
@@ -470,6 +483,8 @@ function moreView(){
   ${segOf('lang',[['hinglish','Hinglish'],['english','English']])}
   <p class="group-foot">Changes the ready-made templates. Templates you’ve edited stay as you wrote them.</p>
   <div class="group" style="margin-top:12px">${TPL_ORDER.concat('tutorial').map(k=>`<button class="row" data-act="tplSheet" data-k="${k}"><span class="row-main"><span class="row-title">${TPL_NAMES[k]}</span></span>${k in st.templates?'<span class="row-end">Edited</span>':''}${chev}</button>`).join('')}</div>
+  <div class="group-head"><span>Reminders</span></div>
+  ${remindersHTML()}
   <div class="group-head"><span>Appearance</span></div>
   ${segOf('theme',[['auto','Auto'],['light','Light'],['dark','Dark']])}
   <div class="group-head"><span>Backup and restore</span></div>
@@ -815,6 +830,14 @@ document.addEventListener('click',async e=>{
     case 'msgTo':{const f=$('#toPhone'),l=$('#msgTo');if(f){f.hidden=false;f.focus()}if(l) l.hidden=true;break;}
     case 'copyMsg':try{await navigator.clipboard.writeText($('#msg').value);toast('Message copied')}catch(err){$('#msg').select();toast('Select all and copy')}break;
 
+    case 'remToggle':{
+      const rem=state.settings.reminders,k=b.dataset.k;
+      if(!rem[k]&&!await ensureNotifPermission()){render(false);break}
+      rem[k]=!rem[k];save();render(false);break;}
+    case 'remLead':state.settings.reminders.leadMins=+b.dataset.v;save();render(false);break;
+    case 'remTest':{
+      if(!await ensureNotifPermission()){render(false);toast(TEST_FAIL);break}
+      toast(await ArkNative.notifications.sendTest()?'Test notification sent':TEST_FAIL);break;}
     case 'setPref':state.settings[b.dataset.k]=b.dataset.v;save();applyTheme();render(false);break;
     case 'tplSheet':tplSheet(b.dataset.k);break;
     case 'resetTpl':delete state.settings.templates[b.dataset.k];save();render(false);if(document.querySelector('[data-tpl-sheet]')) tplSheet(b.dataset.k);toast('Template reset');break;
@@ -854,6 +877,7 @@ document.addEventListener('input',e=>{
 });
 document.addEventListener('change',e=>{
   const t=e.target;
+  if(t.dataset.rem==='digestTime'){if(/^\d\d:\d\d$/.test(t.value)){state.settings.reminders.digestTime=t.value;save()}return}
   if((t.name==='rp'||t.id==='f_client')&&$('#rehPerfs')){
     const sel=val('f_client'),btn=document.querySelector('[data-act=saveReh]');
     const c=getC(sel||(btn&&btn.dataset.c));if(!c) return;
@@ -907,12 +931,50 @@ async function maybeCheckUpdate(){
   ui.update=r.banner;
   if(cur().v==='home') render(false);
 }
-ArkNative.onResume(()=>{maybeCheckUpdate();runAutoBackup()});
-ArkNative.onPause(runAutoBackup);
+/* ---- reminders (Android app only): the phone's notifications always mirror the plan for the next two weeks ---- */
+const TEST_FAIL='Couldn’t send. Check that notifications are allowed.';
+let remChain=Promise.resolve(),remTimer=null;
+async function doSyncReminders(){
+  if(!ArkNative.isNative()) return;
+  try{
+    const N=ArkNative.notifications,rem=state.settings.reminders;
+    const act=ArkReminders.syncAction(rem,await N.permission());
+    if(act==='cancel') await N.replaceAll([]);
+    else if(act==='switchOff'){
+      rem.rehearsal=false;rem.digest=false;save();await N.replaceAll([]);
+      toast('Reminders are off: notifications aren’t allowed for ARK Studios');
+      if(cur().v==='more') render(false);
+    }else await N.replaceAll(ArkReminders.planNotifications(state,Date.now()));
+  }catch(e){}
+}
+function syncReminders(){remChain=remChain.then(doSyncReminders);return remChain}
+function remindersSoon(){
+  if(!ArkNative.isNative()) return;
+  clearTimeout(remTimer);
+  remTimer=setTimeout(()=>{remTimer=null;syncReminders()},2000);
+}
+// Only ever asked when the owner turns a reminder on (or taps the test); background syncs never prompt.
+async function ensureNotifPermission(){
+  const N=ArkNative.notifications;
+  const ok=(await N.permission())==='granted'||await N.requestPermission();
+  ui.notifBlocked=!ok;
+  return ok;
+}
+ArkNative.notifications.onTap(extra=>{
+  const t=ArkReminders.tapTarget(state,extra);
+  closeSheet();tab('home');
+  if(t.view!=='client') return;
+  go('client',{c:t.clientId,tab:'reh'});
+  const c=getC(t.clientId),r=getR(c,t.rehearsalId);
+  if(r) rehForm(c,r);
+});
+ArkNative.onResume(()=>{maybeCheckUpdate();runAutoBackup();syncReminders()});
+ArkNative.onPause(()=>{runAutoBackup();if(remTimer){clearTimeout(remTimer);remTimer=null;syncReminders()}});
 applyTheme();
 render(true);
 maybeCheckUpdate();
 runAutoBackup();
+syncReminders();
 // Web only: inside the APK the files ship with the app, and a worker could serve stale ones after an update.
 if('serviceWorker' in navigator&&location.protocol.startsWith('http')&&!ArkNative.isNative()){window.addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}))}
 })();
