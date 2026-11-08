@@ -20,6 +20,9 @@ apply from: "variables.gradle"
 allprojects {
     repositories {
         google()
+        // Google's official mirror of Maven Central, tried first: on GitHub's build machines Maven Central
+        // sometimes redirects large Kotlin artifacts to a GitHub download that fails (HTTP 504).
+        maven { url 'https://maven-central.storage-download.googleapis.com/maven2/' }
         mavenCentral()
     }
 }
