@@ -1,0 +1,11 @@
+{
+  "clients": [],
+  "settings": {
+    "name": "Riya",
+    "lang": "hinglish",
+    "templates": {
+      "full": "My own update for {client}",
+      "finalize": "Hi {client} 😊\n\n{event} ke liye ye songs abhi final karne baaki hain:\n\n{finalizeList}\n\nPlease jaldi confirm kar dijiye taaki editing aur choreography start ho sake 🙏\n\n— {studio}"
+    }
+  }
+}
