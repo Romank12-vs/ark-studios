@@ -78,7 +78,7 @@ From top to bottom:
    Money.
 4. **Needs attention:** at most five rows, most urgent first, each opening its client:
    - planned rehearsals in the past not marked done: "Mark Tuesday's rehearsal done?";
-   - events in 14 days or fewer whose songs are not all ready: "Priya's sangeet · 16 days" /
+   - events in 21 days or fewer whose songs are not all ready (gold, then warning colour from 7 days): "Priya's sangeet · 16 days" /
      "5 songs not ready";
    - balance due where the event is 7 days away or less, or has passed: "St. Mary's School" /
      "₹20,000 due";
