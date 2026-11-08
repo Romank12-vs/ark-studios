@@ -62,7 +62,7 @@ function attachSwipe(root, onAction){
 
   root.addEventListener('click', e => {
     if(performance.now() < swallowUntil){ swallowUntil = 0; e.stopPropagation(); e.preventDefault(); return; }
-    if(e.target.closest('.swipe-act [data-act]')){ if(typeof onAction === 'function') onAction(); openRow = null; }
+    if(e.target.closest(".swipe-act [data-act]")){ if(typeof onAction === "function") onAction(); close(); }
   }, true);
 }
 

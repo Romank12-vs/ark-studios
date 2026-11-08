@@ -28,3 +28,13 @@ test('system font for the interface', () => {
   assert.match(css(), /--font-ui:\s*-apple-system/);
   assert.match(css(), /body\{[^}]*font-family:var\(--font-ui\)[^}]*font-size:17px/);
 });
+
+test('tab bar has one column per tab', () => {
+  const tabs = (/const TABS=\[(.*?)\];/.exec(read('www/index.html'))[1].match(/\['/g) || []).length;
+  const cols = Number(/nav\.tabs div\{[^}]*repeat\((\d+),1fr\)/.exec(css())[1]);
+  assert.equal(cols, tabs);
+});
+
+test('sheet header stays visible while a long sheet scrolls', () => {
+  assert.match(css(), /\.sheet-head\{[^}]*position:sticky/);
+});

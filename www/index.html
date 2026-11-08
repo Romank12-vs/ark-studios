@@ -224,7 +224,7 @@ function homeView(){
   const st=state.settings, t=todayISO();
   const eyebrow=esc(fmtDate(t,{weekday:'long',day:'numeric',month:'long'}))+' · '+greet()+(st.name?', '+esc(st.name.split(' ')[0]):'');
   let h=pageHead('Today',{eyebrow});
-  if(ui.update) h+=`<div class="group" style="margin-top:12px"><div class="row"><span class="row-main"><span class="row-title">ARK Studios ${esc(ui.update.version)} is available</span><span class="row-sub">Installs over this app. Your data stays.</span></span><a class="btn sm primary" href="${esc(ui.update.url)}">Download</a><button class="btn sm ghost" data-act="dismissUpdate">Not now</button></div></div>`;
+  if(ui.update) h+=`<div class="group update-banner" style="margin-top:12px"><div class="row"><span class="row-main"><span class="row-title wrap">ARK Studios ${esc(ui.update.version)} is available</span><span class="row-sub wrap">Installs over this app. Your data stays.</span></span></div><div class="btns fill update-btns"><a class="btn sm primary" href="${esc(ui.update.url)}">Download</a><button class="btn sm ghost" data-act="dismissUpdate">Not now</button></div></div>`;
   if(!state.clients.length){
     return h+emptyHero('Track every client’s performances, songs, rehearsals and payments, and send WhatsApp updates in one tap.',`<button class="btn primary" data-act="newClient">${ic('plus')}Add first client</button><button class="btn ghost" data-act="sample">Explore with sample data</button><button class="btn ghost" data-act="importPick">Restore from a backup file</button>`);
   }
@@ -257,11 +257,12 @@ function homeView(){
 function clientRow(c){
   const songs=songsOf(c),r=readyOf(c),{bal}=totals(c),d=c.date?daysLeft(c.date):null;
   const when=d===null?'':d<0?'event passed':d===0?'today':d===1?'tomorrow':d+' days';
-  const sub=[c.event,when].filter(Boolean).join(' · ')||'No event date';
+  // The event name may shorten; the countdown after it always stays visible.
+  const sub=c.event&&when?`<span class="clip">${esc(c.event)}</span><span class="tail">&nbsp;· ${esc(when)}</span>`:`<span class="clip">${esc(c.event||when||'No event date')}</span>`;
   const urgent=d!==null&&d>=0&&d<=7&&r<songs.length&&c.status!=='cancelled';
   const due=bal>0&&(c.status==='booked'||c.status==='done');
   const badge=c.status==='enquiry'||c.status==='cancelled'?' '+statusBadge(c):'';
-  return `<button class="row" data-act="open" data-c="${c.id}"><span class="row-main"><span class="row-title">${esc(c.name)}</span><span class="row-sub${urgent?' tone-warn':''}">${esc(sub)}${badge}</span></span><span class="row-end">${songs.length?`${r}/${songs.length} ready`:''}${due?`<span class="row-due">${money(bal)} due</span>`:''}</span>${ic('chev','row-chev')}</button>`;
+  return `<button class="row" data-act="open" data-c="${c.id}"><span class="row-main"><span class="row-title">${esc(c.name)}</span><span class="row-sub split${urgent?' tone-warn':''}">${sub}${badge}</span></span><span class="row-end">${songs.length?`${r}/${songs.length} ready`:''}${due?`<span class="row-due">${money(bal)} due</span>`:''}</span>${ic('chev','row-chev')}</button>`;
 }
 
 function songsInProgressRow(){
@@ -512,23 +513,32 @@ function openSheet(title,body,opts){
   $('#sheetBody').scrollTop=0;
 }
 function closeSheet(){if(sheet.open) sheet.close();sheet.style.transform=''}
-sheet.addEventListener('click',e=>{if(e.target===sheet) closeSheet()});
+// Close only on a tap on the dimmed backdrop, i.e. outside the sheet's box. (A tap on the header can
+// also be retargeted to the dialog itself, so e.target alone isn't enough.)
+sheet.addEventListener('click',e=>{
+  if(e.target!==sheet) return;
+  const r=sheet.getBoundingClientRect();
+  if(e.clientX>=r.left&&e.clientX<=r.right&&e.clientY>=r.top&&e.clientY<=r.bottom) return;
+  closeSheet();
+});
 sheet.addEventListener('close',()=>{if(cur().v==='more') render(false)});
 // Drag the grabber or header down: past 120px the sheet closes, otherwise it springs back.
 (function(){
   let drag=null;
   sheet.addEventListener('pointerdown',e=>{
     if(!e.target.closest('.grab,.sheet-head')||e.target.closest('button,a,input,select,textarea')) return;
-    drag={y:e.clientY,id:e.pointerId};sheet.style.transition='none';
-    try{sheet.setPointerCapture(e.pointerId)}catch(err){}
+    drag={y:e.clientY,id:e.pointerId,moving:false};
   });
   sheet.addEventListener('pointermove',e=>{
     if(!drag||e.pointerId!==drag.id) return;
-    const dy=Math.max(0,e.clientY-drag.y);sheet.style.transform=dy?`translateY(${dy}px)`:'';
+    const dy=Math.max(0,e.clientY-drag.y);
+    if(!drag.moving){if(dy<6) return;drag.moving=true;sheet.style.transition='none';try{sheet.setPointerCapture(e.pointerId)}catch(err){}} // a plain tap never captures
+    sheet.style.transform=dy?`translateY(${dy}px)`:'';
   });
   const end=e=>{
     if(!drag||e.pointerId!==drag.id) return;
-    const dy=e.clientY-drag.y;drag=null;
+    const moving=drag.moving,dy=e.type==='pointercancel'?0:e.clientY-drag.y;drag=null;
+    if(!moving) return;
     if(dy>120){sheet.style.transition='';closeSheet();return}
     const reduce=typeof matchMedia==='function'&&matchMedia('(prefers-reduced-motion: reduce)').matches;
     sheet.style.transition=reduce?'none':'transform .2s ease';sheet.style.transform='';

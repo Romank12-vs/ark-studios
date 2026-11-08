@@ -158,7 +158,7 @@ code{background:var(--sunk);padding:1px 5px;border-radius:5px;font-size:13px}
 
 /* nav */
 nav.tabs{position:fixed;left:0;right:0;bottom:0;background:var(--bar);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border-top:1px solid var(--line);padding-bottom:var(--safe-bottom);z-index:9}
-nav.tabs div{max-width:680px;margin:0 auto;display:grid;grid-template-columns:repeat(5,1fr)}
+nav.tabs div{max-width:680px;margin:0 auto;display:grid;grid-template-columns:repeat(4,1fr)}
 nav.tabs button{background:none;border:0;padding:9px 2px 10px;color:var(--muted);font-size:.8125rem;font-weight:600;display:flex;flex-direction:column;align-items:center;gap:3px}
 nav.tabs button svg{width:23px;height:23px}
 nav.tabs button[aria-current="page"]{color:var(--accent)}
@@ -299,7 +299,7 @@ input[type=text],input[type=tel],input[type=date],input[type=time],input[type=nu
 .amt.tone-done{color:var(--done)}
 
 /* Sheets and forms */
-.sheet-head{display:grid;grid-template-columns:minmax(64px,auto) 1fr minmax(64px,auto);align-items:center;gap:8px}
+.sheet-head{display:grid;grid-template-columns:minmax(64px,auto) 1fr minmax(64px,auto);align-items:center;gap:8px;position:sticky;top:-8px;z-index:2;background:var(--bg);padding-top:4px}
 .sheet-head h2{text-align:center;font-size:17px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .sheet-side{justify-self:start;min-width:64px}
 .sheet-head .sheet-done,.sheet-head .sheet-save{justify-self:end}
@@ -328,3 +328,9 @@ details.more[open]>summary .more-chev{transform:rotate(180deg)}
 .row-details[open]>summary .more-chev{transform:rotate(180deg)}
 .row-details .more-body{padding:0 14px 14px}
 .chip{min-width:44px;justify-content:center}
+.split{display:flex;min-width:0}
+.split .clip{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.split .tail{flex:none;white-space:nowrap}
+.row-title.wrap,.row-sub.wrap{white-space:normal}
+.update-banner .update-btns{padding:0 14px 12px;gap:8px}
+.update-banner>*+*{border-top:0}
