@@ -98,6 +98,67 @@ function tap(now = Date.now()){
   }catch(e){}
 }
 
-const api = {backAction, barStyleFor, isNative, onBackButton, onResume, onPause, exitApp, setBarStyle, shareTextFile, writeDocument, listDocuments, deleteDocument, tap};
+/* ---------- local notifications (reminders) ---------- */
+const TEST_ID = 1;
+const REMINDER_CHANNEL = {id: 'reminders', name: 'Reminders', description: 'Rehearsal reminders and the morning summary', importance: 4};
+const notifications = {
+  TEST_ID, REMINDER_CHANNEL,
+  async permission(){
+    const ln = plugin('LocalNotifications');
+    if(!ln) return 'unsupported';
+    try{ return (await ln.checkPermissions()).display; }catch(e){ return 'unsupported'; }
+  },
+  async requestPermission(){
+    const ln = plugin('LocalNotifications');
+    if(!ln) return false;
+    try{ return (await ln.requestPermissions()).display === 'granted'; }catch(e){ return false; }
+  },
+  // Replaces every pending reminder with `items` ({id, at, title, body, extra}). Never asks for a permission:
+  // without exact-alarm access the alarms are scheduled inexact, so a background re-plan can't open a settings screen.
+  async replaceAll(items){
+    const ln = plugin('LocalNotifications');
+    if(!ln) return false;
+    try{
+      await ln.cancelAll();
+      if(!items || !items.length) return true;
+      await ln.createChannel(REMINDER_CHANNEL);
+      let exact = false;
+      try{ exact = (await ln.checkExactNotificationSetting()).exact_alarm === 'granted'; }catch(e){}
+      await ln.schedule({notifications: items.map(i => ({
+        id: i.id, title: i.title, body: i.body, extra: i.extra,
+        channelId: REMINDER_CHANNEL.id,
+        schedule: {at: new Date(i.at), allowWhileIdle: true},
+        isExactNotification: exact
+      }))});
+      return true;
+    }catch(e){
+      return false;
+    }
+  },
+  async sendTest(){
+    const ln = plugin('LocalNotifications');
+    if(!ln) return false;
+    try{
+      await ln.createChannel(REMINDER_CHANNEL);
+      await ln.schedule({notifications: [{
+        id: TEST_ID, title: 'Reminders are on',
+        body: 'Rehearsal reminders and the morning summary will look like this.',
+        channelId: REMINDER_CHANNEL.id, extra: {kind: 'test'}
+      }]});
+      return true;
+    }catch(e){
+      return false;
+    }
+  },
+  onTap(fn){
+    const ln = plugin('LocalNotifications');
+    if(!ln) return;
+    try{
+      Promise.resolve(ln.addListener('localNotificationActionPerformed', e => fn((e && e.notification && e.notification.extra) || {}))).catch(() => {});
+    }catch(e){}
+  }
+};
+
+const api = {backAction, barStyleFor, isNative, onBackButton, onResume, onPause, exitApp, setBarStyle, shareTextFile, writeDocument, listDocuments, deleteDocument, tap, notifications};
 if(typeof module !== 'undefined' && module.exports) module.exports = api; else window.ArkNative = api;
 })();
