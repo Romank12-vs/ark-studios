@@ -1,8 +1,15 @@
 // ARK Studios offline support for the web version (the Android app never registers this worker).
 // Network first for everything, so a deploy is picked up on the next load and old scripts are never
 // mixed with a new page; the cache is only the fallback when there is no connection.
-const CACHE = 'ark-studios-v1';
-const SHELL = ['./', './index.html', './manifest.webmanifest', './fonts/fonts.css'];
+const CACHE = 'ark-studios-v2';
+// Everything the page needs at startup, so it works offline after one visit (the scripts load before
+// this worker takes control, so the runtime cache alone would miss them). test/offline-shell.test.js
+// fails if index.html or fonts.css starts using a file that is not listed here.
+const SHELL = ['./', './index.html', './manifest.webmanifest',
+  './js/version.js', './js/core.js', './js/native.js', './js/update.js',
+  './fonts/fonts.css', './fonts/bricolage-grotesque-latin.woff2', './fonts/bricolage-grotesque-latin-ext.woff2',
+  './fonts/rozha-one-latin.woff2', './fonts/rozha-one-latin-ext.woff2',
+  './icons/icon-192.png', './icons/apple-touch-icon.png'];
 
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL)).then(() => self.skipWaiting()));
