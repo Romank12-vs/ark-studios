@@ -49,6 +49,7 @@ const MODES=['UPI','Cash','Bank transfer','Card','Cheque'];
 const CHARGE_PRESETS=['Choreography package','Extra song','Extra rehearsal','Props','Background dancers','Travel','Song editing','Discount'];
 
 const TPL_ORDER=['update','finalize','practice','rehearsal','payment','receipt','runsheet','thanks','custom'];
+const TPL_CHIP={update:'Progress',finalize:'Finalise',practice:'Practice',rehearsal:'Rehearsal',payment:'Payment',receipt:'Receipt',runsheet:'Run sheet',thanks:'Thank you',custom:'Custom'};
 const TPL_NAMES={update:'Progress update',finalize:'Finalise songs',practice:'Practice reminder',rehearsal:'Rehearsal reminder',payment:'Payment reminder',receipt:'Payment receipt',runsheet:'Run sheet for DJ',thanks:'Thank you & review',custom:'Custom',tutorial:'Practice video'};
 const DEFAULTS={
 hinglish:{
@@ -574,15 +575,20 @@ function chargeForm(c,x){
   <label class="field"><span>Amount (₹)</span><input type="number" inputmode="numeric" id="f_camt" value="${esc(x.amount)}" placeholder="e.g. 5000"><small>Use a negative amount for a discount.</small></label>
   <div class="btns fill"><button class="btn primary" data-act="saveCharge" data-c="${c.id}" data-x="${x.id||''}">${n?'Add charge':'Save changes'}</button>${n?'':`<button class="btn danger" data-act="delCharge" data-c="${c.id}" data-x="${x.id}">Delete</button>`}</div>`);
 }
+// One sheet for every WhatsApp message: template chips, editable text, recipient, send or copy.
 function composer(){
   const k=ui.compose,c=getC(k.c);if(!c) return;
   const text=fill(tplText(k.t),msgVars(c,k));
-  const chips=k.t==='tutorial'?'':`<div class="chips" style="margin-bottom:12px" role="group" aria-label="Message type">${TPL_ORDER.map(t=>`<button class="chip" data-act="tpl" data-t="${t}" aria-pressed="${k.t===t}">${TPL_NAMES[t]}</button>`).join('')}</div>`;
-  const to=k.t==='tutorial'||k.t==='runsheet'?'':c.phone;
-  openSheet(k.t==='tutorial'?'Share practice video':'Message '+esc(c.name),`${chips}
-  <label class="field"><span>Send to</span><input type="tel" id="toPhone" value="${esc(to)}" placeholder="Leave empty to choose a chat or group in WhatsApp"></label>
-  <label class="field"><span>Message</span><textarea id="msg">${esc(text)}</textarea><small>Edit anything before sending. To change the wording for good, edit the template in Settings.</small></label>
-  <div class="btns fill"><a class="btn wa" id="waLink" target="_blank" rel="noopener" href="${esc(waHref(to,text))}">${ic('wa')}Open in WhatsApp</a><button class="btn ghost" data-act="copyMsg">Copy</button></div>`);
+  const tut=k.t==='tutorial', to=tut||k.t==='runsheet'?'':c.phone;
+  const chips=tut?'':`<div class="chips msg-chips" role="group" aria-label="Message type">${TPL_ORDER.map(t=>`<button class="chip" data-act="tpl" data-t="${t}" aria-pressed="${k.t===t}">${TPL_CHIP[t]}</button>`).join('')}</div>`;
+  const toLine=to?`<div class="msg-to" id="msgTo"><span>To: <b>${esc(c.name)}</b> (${esc(c.phone)})</span><button class="link" data-act="msgTo">Change</button></div>`:'';
+  openSheet(tut?'Share practice video':'Message '+esc(c.name),`${chips}${toLine}
+  <input type="tel" id="toPhone" class="msg-phone" value="${esc(to)}" placeholder="Number, or leave empty to pick a chat or group" aria-label="Send to" ${to?'hidden':''}>
+  <textarea id="msg" class="msg-card" rows="${Math.max(6,text.split('\n').length+1)}" aria-label="Message">${esc(text)}</textarea>
+  <p class="group-foot">Tap the text to edit it before sending. To change a template for good, edit it in Settings.</p>
+  <a class="btn wa block msg-send" id="waLink" target="_blank" rel="noopener" href="${esc(waHref(to,text))}">${ic('wa')}Send on WhatsApp</a>
+  <button class="btn ghost block msg-copy" data-act="copyMsg">Copy text</button>`);
+  const on=document.querySelector('.msg-chips [aria-pressed="true"]');if(on&&on.scrollIntoView) on.scrollIntoView({inline:'center',block:'nearest'});
 }
 function updateWaLink(){const a=$('#waLink'),m=$('#msg'),p=$('#toPhone');if(a&&m) a.href=waHref(p?p.value:'',m.value)}
 
@@ -728,6 +734,7 @@ document.addEventListener('click',async e=>{
 
     case 'compose':ui.compose={c:c.id,t:t||'update',rid:b.dataset.r||null};composer();break;
     case 'tpl':ui.compose.t=t;composer();break;
+    case 'msgTo':{const f=$('#toPhone'),l=$('#msgTo');if(f){f.hidden=false;f.focus()}if(l) l.hidden=true;break;}
     case 'copyMsg':try{await navigator.clipboard.writeText($('#msg').value);toast('Message copied')}catch(err){$('#msg').select();toast('Select all and copy')}break;
 
     case 'setPref':state.settings[b.dataset.k]=b.dataset.v;save();applyTheme();render(false);break;
@@ -755,7 +762,7 @@ $('#importFile').addEventListener('change',e=>{const f=e.target.files[0];if(!f) 
 let setTimer=null;
 document.addEventListener('input',e=>{
   const t=e.target;
-  if(t.id==='msg'||t.id==='toPhone'){updateWaLink();return}
+  if(t.id==='msg'||t.id==='toPhone'){if(t.id==='msg'){t.style.height='auto';t.style.height=t.scrollHeight+'px'}updateWaLink();return}
   if(t.id==='q'){ui.q=t.value;$('#clientList').innerHTML=clientListHTML();return}
   if(t.dataset.set){state.settings[t.dataset.set]=t.value;clearTimeout(setTimer);setTimer=setTimeout(save,400);return}
   if(t.dataset.tpl){state.settings.templates[t.dataset.tpl]=t.value;clearTimeout(setTimer);setTimer=setTimeout(save,400);return}
