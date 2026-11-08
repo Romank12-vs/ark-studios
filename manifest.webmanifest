@@ -1,0 +1,16 @@
+{
+  "name": "Taal: choreography studio",
+  "short_name": "Taal",
+  "description": "Clients, songs, rehearsals and payments for choreographers, with WhatsApp updates.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#FBF4F0",
+  "theme_color": "#B4236B",
+  "icons": [
+    {"src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png"},
+    {"src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png"},
+    {"src": "icons/maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable"}
+  ]
+}
