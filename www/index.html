@@ -249,6 +249,7 @@ dialog[open]{animation:up .22s ease-out}
 
 <script src="js/version.js"></script>
 <script src="js/core.js"></script>
+<script src="js/native.js"></script>
 <script>
 (function(){
 "use strict";
@@ -663,7 +664,7 @@ function moreView(){
   <p class="muted small">Your data lives on this device. Save a backup file now and then, especially before changing phones.</p>
   <div class="btns"><button class="btn ghost" data-act="exportFile">Save backup file</button><button class="btn ghost" data-act="importPick">Restore from file</button><button class="btn ghost" data-act="copyBackup">Copy as text</button></div>
   <details class="tpl" style="margin-top:10px"><summary>Restore from pasted text</summary><div class="inner"><textarea id="backupBox" rows="4" placeholder="Paste backup text here"></textarea><button class="btn sm ghost" style="margin-top:8px" data-act="restorePaste">Restore</button></div></details></section>
-  <section class="sec"><div class="sec-head"><h2>Install on your phone</h2></div><p class="muted small">Android: open the menu in Chrome and tap “Install app”. iPhone: tap Share in Safari, then “Add to Home Screen”.</p></section>
+  ${ArkNative.isNative()?'':`<section class="sec"><div class="sec-head"><h2>Install on your phone</h2></div><p class="muted small">Android: <a href="https://github.com/Romank12-vs/ark-studios/releases/latest/download/ARK-Studios.apk">download the ARK Studios app</a>. iPhone: tap Share in Safari, then “Add to Home Screen”.</p></section>`}
   <section class="sec"><button class="btn danger" data-act="wipe">Delete all data</button></section>
   <p class="muted small" style="text-align:center;margin-top:28px">ARK Studios ${esc(APP_VERSION)} · ${state.clients.length} clients, ${state.clients.reduce((a,c)=>a+songsOf(c).length,0)} songs</p>`;
   return h;
@@ -685,7 +686,7 @@ function render(scroll){
 }
 function onScroll(){const tb=$('#topbar');if(tb) tb.classList.toggle('scrolled',window.scrollY>70)}
 window.addEventListener('scroll',onScroll,{passive:true});
-function applyTheme(){const t=state.settings.theme;if(t==='light'||t==='dark') document.documentElement.setAttribute('data-theme',t);else document.documentElement.removeAttribute('data-theme')}
+function applyTheme(){const t=state.settings.theme;if(t==='light'||t==='dark') document.documentElement.setAttribute('data-theme',t);else document.documentElement.removeAttribute('data-theme');ArkNative.setBarStyle(t)}
 
 /* ================= sheets ================= */
 const sheet=$('#sheet');
@@ -931,7 +932,11 @@ document.addEventListener('click',async e=>{
 
     case 'setPref':state.settings[b.dataset.k]=b.dataset.v;save();applyTheme();render(false);break;
     case 'resetTpl':delete state.settings.templates[b.dataset.k];save();render(false);toast('Template reset');break;
-    case 'exportFile':{const ok=await downloadFile(backupFileName(todayISO()),JSON.stringify({app:BACKUP_MARKER,...state},null,1),'application/json');toast(ok?'Backup saved':'Couldn’t save the file. Try “Copy as text”.');break;}
+    case 'exportFile':{
+      const json=JSON.stringify({app:BACKUP_MARKER,...state},null,1);
+      // Blob downloads do nothing inside the Android WebView, so the app hands the file to the share sheet.
+      if(ArkNative.isNative()){const ok=await ArkNative.shareTextFile(backupFileName(todayISO()),json,'application/json');toast(ok?'Backup ready to save':'Backup not saved');break;}
+      const ok=await downloadFile(backupFileName(todayISO()),json,'application/json');toast(ok?'Backup saved':'Couldn’t save the file. Try “Copy as text”.');break;}
     case 'copyBackup':{const txt=JSON.stringify({app:BACKUP_MARKER,...state});try{await navigator.clipboard.writeText(txt);toast('Backup copied. Paste it somewhere safe.')}catch(err){const bx=$('#backupBox');bx.value=txt;bx.closest('details').open=true;bx.select();toast('Backup shown below, copy it')}break;}
     case 'importPick':$('#importFile').click();break;
     case 'restorePaste':restoreFrom($('#backupBox').value);break;
@@ -969,9 +974,14 @@ document.addEventListener('change',e=>{
   if(t.id==='f_client'&&document.querySelector('[data-act=savePay]')){const c=getC(t.value);const sm=$('#f_amt')&&$('#f_amt').nextElementSibling;if(c){const bal=totals(c).bal;$('#f_amt').placeholder=bal>0?bal:'';if(sm&&sm.tagName==='SMALL') sm.textContent=bal>0?'Balance is '+money(bal):''}}
 });
 
+ArkNative.onBackButton(()=>{
+  const a=ArkNative.backAction({sheetOpen:sheet.open,stackLen:ui.stack.length});
+  if(a==='closeSheet') closeSheet(); else if(a==='back') back(); else ArkNative.exitApp();
+});
 applyTheme();
 render(true);
-if('serviceWorker' in navigator&&location.protocol.startsWith('http')){window.addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}))}
+// Web only: inside the APK the files ship with the app, and a worker could serve stale ones after an update.
+if('serviceWorker' in navigator&&location.protocol.startsWith('http')&&!ArkNative.isNative()){window.addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}))}
 })();
 </script>
 </body>
