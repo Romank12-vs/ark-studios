@@ -19,5 +19,5 @@ window.uiAudit = function uiAudit(){
     const r = el.getBoundingClientRect();
     if(r.height < 43.5 || r.width < 43.5) smallTargets.push(`${name(el)} ${Math.round(r.width)}x${Math.round(r.height)}`);
   });
-  return {smallText: [...new Set(smallText)], smallTargets: [...new Set(smallTargets)], overflowX: document.documentElement.scrollWidth > innerWidth};
+  return {smallText: [...new Set(smallText)], smallTargets: [...new Set(smallTargets)], overflowX: document.documentElement.scrollWidth > innerWidth || [...document.querySelectorAll('dialog[open] .sheet')].some(s => s.scrollWidth > s.clientWidth + 1)};
 };

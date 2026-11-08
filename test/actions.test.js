@@ -14,6 +14,8 @@ const handlers = new Set([...html.matchAll(/case '(\w+)':/g)].map(m => m[1]));
 const referenced = new Set([
   ...[...html.matchAll(/data-act="(\w+)"/g)].map(m => m[1]),
   ...[...html.matchAll(/\['(\w+)',\s*'[^']*'\]/g)].map(m => m[1]), // FAB map entries like ['newClient','New client']
+  ...[...html.matchAll(/save:\{act:'(\w+)'/g)].map(m => m[1]), // sheet header Save: openSheet(..., {save:{act:'saveClient', ...}})
+  ...[...html.matchAll(/deleteRow\('[^']*','(\w+)'/g)].map(m => m[1]), // red delete rows: deleteRow('Delete client','delClient', ...)
 ]);
 
 test('every v1.0 action still has a handler', () => {

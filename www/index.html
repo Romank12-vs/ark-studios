@@ -489,77 +489,111 @@ function applyTheme(){const t=state.settings.theme;if(t==='light'||t==='dark') d
 
 /* ================= sheets ================= */
 const sheet=$('#sheet');
-function openSheet(title,body){
-  $('#sheetBody').innerHTML=`<div class="grab" aria-hidden="true"></div><div class="sheet-head"><h2 id="sheetTitle">${title}</h2><button class="x" data-act="close" aria-label="Close">×</button></div>${body}`;
+// Sheets: grabber + header. Forms pass opts.save to get Cancel · title · Save; other sheets get Done.
+function openSheet(title,body,opts){
+  opts=opts||{};
+  const sv=opts.save,data=sv?Object.entries(sv.data||{}).filter(([,v])=>v!==undefined&&v!==null).map(([k,v])=>` data-${k}="${esc(v)}"`).join(''):'';
+  const head=sv?`<div class="sheet-head"><button class="link sheet-side" data-act="close">Cancel</button><h2 id="sheetTitle">${title}</h2><button class="btn primary sm sheet-save" data-act="${sv.act}"${data}>${sv.label||'Save'}</button></div>`
+    :`<div class="sheet-head"><span class="sheet-side" aria-hidden="true"></span><h2 id="sheetTitle">${title}</h2><button class="link sheet-side sheet-done" data-act="close">Done</button></div>`;
+  $('#sheetBody').innerHTML=`<div class="grab" aria-hidden="true"></div>${head}${body}`;
+  sheet.style.transform='';
   if(!sheet.open) sheet.showModal();
   $('#sheetBody').scrollTop=0;
 }
-function closeSheet(){if(sheet.open) sheet.close()}
+function closeSheet(){if(sheet.open) sheet.close();sheet.style.transform=''}
 sheet.addEventListener('click',e=>{if(e.target===sheet) closeSheet()});
+// Drag the grabber or header down: past 120px the sheet closes, otherwise it springs back.
+(function(){
+  let drag=null;
+  sheet.addEventListener('pointerdown',e=>{
+    if(!e.target.closest('.grab,.sheet-head')||e.target.closest('button,a,input,select,textarea')) return;
+    drag={y:e.clientY,id:e.pointerId};sheet.style.transition='none';
+    try{sheet.setPointerCapture(e.pointerId)}catch(err){}
+  });
+  sheet.addEventListener('pointermove',e=>{
+    if(!drag||e.pointerId!==drag.id) return;
+    const dy=Math.max(0,e.clientY-drag.y);sheet.style.transform=dy?`translateY(${dy}px)`:'';
+  });
+  const end=e=>{
+    if(!drag||e.pointerId!==drag.id) return;
+    const dy=e.clientY-drag.y;drag=null;
+    if(dy>120){sheet.style.transition='';closeSheet();return}
+    const reduce=typeof matchMedia==='function'&&matchMedia('(prefers-reduced-motion: reduce)').matches;
+    sheet.style.transition=reduce?'none':'transform .2s ease';sheet.style.transform='';
+  };
+  sheet.addEventListener('pointerup',end);sheet.addEventListener('pointercancel',end);
+})();
 const opt=(arr,v,blankLabel)=>(blankLabel!==undefined?`<option value="">${blankLabel}</option>`:'')+arr.map(o=>`<option ${o===v?'selected':''}>${esc(o)}</option>`).join('');
 const clientSelect=sel=>`<label class="field"><span>Client</span><select id="f_client">${state.clients.filter(c=>c.status!=='cancelled').sort((a,b)=>(a.date||'9999').localeCompare(b.date||'9999')).map(c=>`<option value="${c.id}" ${c.id===sel?'selected':''}>${esc(c.name)}</option>`).join('')}</select></label>`;
+// Optional fields live under a "More details" row, open when editing a record that already uses them.
+const moreDetails=(open,inner)=>`<details class="more"${open?' open':''}><summary>More details${ic('down','more-chev')}</summary><div class="more-body">${inner}</div></details>`;
+const deleteRow=(label,act,data)=>`<div class="group" style="margin-top:20px"><button class="row danger-row" data-act="${act}" ${data}>${label}</button></div>`;
 
 function clientForm(c){
   const n=!c;c=c||{status:'booked'};
-  const pkg=c.charges?'':`<div class="two"><label class="field"><span>Package price (₹)</span><input type="number" inputmode="numeric" id="f_pkg" placeholder="e.g. 35000"></label><label class="field"><span>Advance paid (₹)</span><input type="number" inputmode="numeric" id="f_adv" placeholder="Optional"></label></div>`;
-  const statusSeg=n?'':`<div class="group-head"><span>Booking status</span></div><div class="seg" id="statusSeg">${STATUSES.map(s=>`<button data-act="setStatus" data-c="${c.id}" data-s="${s.k}" aria-pressed="${c.status===s.k}">${s.l}</button>`).join('')}</div>
+  const pkg=n?`<div class="two"><label class="field"><span>Package price (₹)</span><input type="number" inputmode="numeric" id="f_pkg" placeholder="e.g. 35000"></label><label class="field"><span>Advance paid (₹)</span><input type="number" inputmode="numeric" id="f_adv" placeholder="Optional"></label></div>`:'';
+  const status=n?`<label class="field"><span>Status</span><select id="f_status">${STATUSES.map(s=>`<option value="${s.k}" ${c.status===s.k?'selected':''}>${s.l}</option>`).join('')}</select></label>`:`<input type="hidden" id="f_status" value="${esc(c.status)}">`;
+  const extras=n?'':`<div class="group-head"><span>Booking status</span></div><div class="seg" id="statusSeg">${STATUSES.map(s=>`<button data-act="setStatus" data-c="${c.id}" data-s="${s.k}" aria-pressed="${c.status===s.k}">${s.l}</button>`).join('')}</div>
   <button class="btn wa block" id="thanksBtn" style="margin-top:12px" ${c.status==='done'?'':'hidden'} data-act="compose" data-c="${c.id}" data-t="thanks">${ic('wa')}Send thank-you and ask for a review</button>
-  <div class="group" style="margin-top:16px"><button class="row danger-row" data-act="delClient" data-c="${c.id}">Delete client</button></div>`;
-  openSheet(n?'New client':'Edit client',`${n?'':`<p class="page-sub" style="margin:-8px 0 12px">Added ${esc(fmtDate(isoOf(new Date(c.createdAt))))}${c.source?' · via '+esc(c.source):''}</p>`}
+  ${deleteRow('Delete client','delClient',`data-c="${c.id}"`)}`;
+  openSheet(n?'New client':'Edit client',`${n?'':`<p class="page-sub sheet-sub">Added ${esc(fmtDate(isoOf(new Date(c.createdAt))))}${c.source?' · via '+esc(c.source):''}</p>`}
   <label class="field"><span>Client name</span><input type="text" id="f_name" value="${esc(c.name)}" placeholder="e.g. Priya & Arjun" autocomplete="off"></label>
   <label class="field"><span>WhatsApp number</span><input type="tel" id="f_phone" value="${esc(c.phone)}" placeholder="98765 43210"><small>Indian 10-digit numbers get +91 automatically.</small></label>
   <label class="field"><span>Event</span><input type="text" id="f_event" value="${esc(c.event)}" placeholder="e.g. Sharma wedding sangeet"></label>
-  <div class="two"><label class="field"><span>Event date</span><input type="date" id="f_date" value="${esc(c.date)}"></label><label class="field"><span>Status</span><select id="f_status">${STATUSES.map(s=>`<option value="${s.k}" ${c.status===s.k?'selected':''}>${s.l}</option>`).join('')}</select></label></div>
+  <label class="field"><span>Event date</span><input type="date" id="f_date" value="${esc(c.date)}"></label>
+  ${moreDetails(!n&&!!(c.venue||c.songsIncluded||c.rehearsalsIncluded||c.source||c.notes),`${status}
   <label class="field"><span>Venue</span><input type="text" id="f_venue" value="${esc(c.venue)}" placeholder="e.g. The Grand, Juhu"></label>
   <div class="two"><label class="field"><span>Songs in package</span><input type="number" inputmode="numeric" id="f_songsInc" value="${esc(c.songsIncluded)}" placeholder="e.g. 10"></label><label class="field"><span>Rehearsals in package</span><input type="number" inputmode="numeric" id="f_rehInc" value="${esc(c.rehearsalsIncluded)}" placeholder="e.g. 8"></label></div>
   ${pkg}
   <label class="field"><span>Found you through</span><select id="f_source">${opt(SOURCES,c.source,'Choose…')}</select></label>
-  <label class="field"><span>Notes</span><textarea id="f_notes" rows="3" placeholder="Preferences, family members, anything to remember">${esc(c.notes)}</textarea></label>
-  <button class="btn primary block" data-act="saveClient" data-c="${c.id||''}">${n?'Add client':'Save changes'}</button>${statusSeg}`);
+  <label class="field"><span>Notes</span><textarea id="f_notes" rows="3" placeholder="Preferences, family members, anything to remember">${esc(c.notes)}</textarea></label>`)}
+  ${extras}`,{save:{act:'saveClient',data:{c:c.id||''},label:n?'Add':'Save'}});
 }
 function perfForm(c,p){
   const n=!p;p=p||{performers:[]};
   openSheet(n?'New performance':'Edit performance',`
   <label class="field"><span>Performance name</span><input type="text" id="f_title" value="${esc(p.title)}" placeholder="e.g. Bride entry, Cousins group"></label>
   <div class="two"><label class="field"><span>Function</span><select id="f_type">${opt(FUNCS,p.type||'Sangeet')}</select></label><label class="field"><span>Format</span><select id="f_format">${opt(FORMATS,p.format||'Group')}</select></label></div>
-  <label class="field"><span>Performers</span><textarea id="f_perfs" rows="4" placeholder="One name per line, or separated by commas">${esc(p.performers.map(x=>x.name).join('\n'))}</textarea><small>Used for rehearsal attendance.</small></label>
-  <label class="field"><span>Props and costume</span><input type="text" id="f_props" value="${esc(p.props)}" placeholder="e.g. Dandiya sticks, matching red dupattas"></label>
-  <div class="btns fill"><button class="btn primary" data-act="savePerf" data-c="${c.id}" data-p="${p.id||''}">${n?'Add performance':'Save changes'}</button>${n?'':`<button class="btn danger" data-act="delPerf" data-c="${c.id}" data-p="${p.id}">Delete</button>`}</div>`);
+  ${moreDetails(!n&&!!(p.performers.length||p.props),`<label class="field"><span>Performers</span><textarea id="f_perfs" rows="4" placeholder="One name per line, or separated by commas">${esc(p.performers.map(x=>x.name).join('\n'))}</textarea><small>Used for rehearsal attendance.</small></label>
+  <label class="field"><span>Props and costume</span><input type="text" id="f_props" value="${esc(p.props)}" placeholder="e.g. Dandiya sticks, matching red dupattas"></label>`)}
+  ${n?'':deleteRow('Delete performance','delPerf',`data-c="${c.id}" data-p="${p.id}"`)}`,{save:{act:'savePerf',data:{c:c.id,p:p.id||''},label:n?'Add':'Save'}});
 }
 function songForm(c,p,s){
   const n=!s;s=s||{steps:{}};
   openSheet(n?'New song':'Edit song',`
-  <label class="field"><span>Song</span><input type="text" id="f_stitle" value="${esc(s.title)}" placeholder="Song name"></label>
-  <div class="two"><label class="field"><span>Film or artist</span><input type="text" id="f_artist" value="${esc(s.artist)}" placeholder="Optional"></label><label class="field"><span>Duration</span><input type="text" inputmode="decimal" id="f_dur" value="${esc(fmtDur(s.dur))}" placeholder="3:45"></label></div>
+  <div class="two"><label class="field" style="grid-column:span 1"><span>Song</span><input type="text" id="f_stitle" value="${esc(s.title)}" placeholder="Song name"></label><label class="field"><span>Duration</span><input type="text" inputmode="decimal" id="f_dur" value="${esc(fmtDur(s.dur))}" placeholder="3:45"></label></div>
+  ${moreDetails(!n&&!!(s.artist||s.cut||s.ref||s.tutorial||s.notes),`<label class="field"><span>Film or artist</span><input type="text" id="f_artist" value="${esc(s.artist)}" placeholder="Optional"></label>
   <label class="field"><span>Editing notes</span><input type="text" id="f_cut" value="${esc(s.cut)}" placeholder="e.g. 0:45 to 2:10, add dhol at the end"></label>
   <label class="field"><span>Reference video link</span><input type="url" id="f_ref" value="${esc(s.ref)}" placeholder="YouTube or Instagram link" autocapitalize="off"></label>
   <label class="field"><span>Practice video link</span><input type="url" id="f_tut" value="${esc(s.tutorial)}" placeholder="Drive or YouTube link for performers" autocapitalize="off"><small>Share it with performers who miss a rehearsal.</small></label>
   ${!n&&c.performances.length>1?`<label class="field"><span>Performance</span><select id="f_move">${c.performances.map(x=>`<option value="${x.id}" ${x.id===p.id?'selected':''}>${esc(x.title)}</option>`).join('')}</select></label>`:''}
-  <label class="field"><span>Notes</span><textarea id="f_snotes" rows="2" placeholder="Formations, counts, anything to remember">${esc(s.notes)}</textarea></label>
-  <div class="btns fill"><button class="btn primary" data-act="saveSong" data-c="${c.id}" data-p="${p.id}" data-s="${s.id||''}">${n?'Add song':'Save changes'}</button>${n?'':`<button class="btn danger" data-act="delSong" data-c="${c.id}" data-p="${p.id}" data-s="${s.id}">Delete</button>`}</div>
-  ${n?`<p class="muted small" style="margin-top:10px">Tip: add the next song straight after with “Save and add another”.</p><button class="btn ghost block" style="margin-top:4px" data-act="saveSong" data-more="1" data-c="${c.id}" data-p="${p.id}">Save and add another</button>`:''}`);
+  <label class="field"><span>Notes</span><textarea id="f_snotes" rows="2" placeholder="Formations, counts, anything to remember">${esc(s.notes)}</textarea></label>`)}
+  ${n?`<button class="btn ghost block" style="margin-top:16px" data-act="saveSong" data-more="1" data-c="${c.id}" data-p="${p.id}">Save and add another</button>`:deleteRow('Delete song','delSong',`data-c="${c.id}" data-p="${p.id}" data-s="${s.id}"`)}`,{save:{act:'saveSong',data:{c:c.id,p:p.id,s:s.id||''},label:n?'Add':'Save'}});
 }
 function rehForm(c,r){
   const n=!r;
   if(!c&&!state.clients.length){toast('Add a client first');return}
   c=c||state.clients.filter(x=>x.status!=='cancelled').sort((a,b)=>(a.date||'9999').localeCompare(b.date||'9999'))[0]||state.clients[0];
   r=r||{date:todayISO(),time:'18:00',mins:90,place:'Studio',perfIds:[],status:'planned',attendance:{},notes:''};
+  const openMore=!n&&(r.date<=todayISO()||r.status!=='planned'||!!r.notes||Object.keys(r.attendance).length>0);
   openSheet(n?'Schedule rehearsal':'Rehearsal',`
   ${n&&cur().v!=='client'?clientSelect(c.id):''}
   <div class="two"><label class="field"><span>Date</span><input type="date" id="f_rdate" value="${esc(r.date)}"></label><label class="field"><span>Time</span><input type="time" id="f_rtime" value="${esc(r.time)}"></label></div>
   <div class="two"><label class="field"><span>Duration</span><select id="f_rmins">${[45,60,90,120,150,180].map(m=>`<option value="${m}" ${+r.mins===m?'selected':''}>${m<60?m+' min':(m/60)+' hr'+(m>60?'s':'')}</option>`).join('')}</select></label><label class="field"><span>Where</span><select id="f_rplace">${opt(PLACES,r.place)}</select></label></div>
   <div id="rehPerfs">${rehPerfsHTML(c,r)}</div>
-  <label class="field"><span>Status</span><select id="f_rstatus"><option value="planned" ${r.status==='planned'?'selected':''}>Planned</option><option value="done" ${r.status==='done'?'selected':''}>Done</option><option value="cancelled" ${r.status==='cancelled'?'selected':''}>Cancelled</option></select></label>
-  <label class="field"><span>Notes</span><textarea id="f_rnotes" rows="2" placeholder="What to cover, what was covered">${esc(r.notes)}</textarea></label>
-  <div class="btns fill"><button class="btn primary" data-act="saveReh" data-c="${c.id}" data-r="${r.id||''}">${n?'Schedule':'Save changes'}</button>${n?'':`<button class="btn danger" data-act="delReh" data-c="${c.id}" data-r="${r.id}">Delete</button>`}</div>
-  ${n?'':`<div class="btns fill" style="margin-top:8px">${r.status==='planned'?`<button class="btn wa" data-act="compose" data-c="${c.id}" data-t="rehearsal" data-r="${r.id}">${ic('wa')}Send reminder</button>`:''}<a class="btn ghost" href="${esc(gcalLink(c,r))}" target="_blank" rel="noopener">${ic('calplus')}Add to calendar</a></div>`}`);
+  ${moreDetails(openMore,`<label class="field"><span>Status</span><select id="f_rstatus"><option value="planned" ${r.status==='planned'?'selected':''}>Planned</option><option value="done" ${r.status==='done'?'selected':''}>Done</option><option value="cancelled" ${r.status==='cancelled'?'selected':''}>Cancelled</option></select></label>
+  <div id="rehAttend">${rehAttendHTML(c,r)}</div>
+  <label class="field"><span>Notes</span><textarea id="f_rnotes" rows="2" placeholder="What to cover, what was covered">${esc(r.notes)}</textarea></label>`)}
+  ${n?'':`<div class="group" style="margin-top:16px">${r.status==='planned'?`<button class="row" data-act="compose" data-c="${c.id}" data-t="rehearsal" data-r="${r.id}">${ic('wa')}<span class="row-main"><span class="row-title">Send reminder</span></span>${ic('chev','row-chev')}</button>`:''}<a class="row" href="${esc(gcalLink(c,r))}" target="_blank" rel="noopener">${ic('calplus')}<span class="row-main"><span class="row-title">Add to calendar</span></span>${ic('chev','row-chev')}</a></div>
+  ${deleteRow('Delete rehearsal','delReh',`data-c="${c.id}" data-r="${r.id}"`)}`}`,{save:{act:'saveReh',data:{c:c.id,r:r.id||''},label:n?'Add':'Save'}});
 }
 function rehPerfsHTML(c,r){
   if(!c.performances.length) return '<p class="muted small">This client has no performances yet. Add them on the Songs tab to pick what to rehearse.</p>';
-  let h=`<div class="field"><span style="display:block;font-size:.85rem;font-weight:600;margin-bottom:6px">What to rehearse</span><div class="checks">${c.performances.map(p=>`<label><input type="checkbox" name="rp" value="${p.id}" ${r.perfIds.includes(p.id)?'checked':''}>${esc(p.title)}</label>`).join('')}</div><small class="muted">Leave all unticked to rehearse everything.</small></div>`;
+  return `<div class="field"><span>What to rehearse</span><div class="checks">${c.performances.map(p=>`<label><input type="checkbox" name="rp" value="${p.id}" ${r.perfIds.includes(p.id)?'checked':''}>${esc(p.title)}</label>`).join('')}</div><small class="muted">Leave all unticked to rehearse everything.</small></div>`;
+}
+function rehAttendHTML(c,r){
   const ps=rehPerformers(c,r);
-  if(ps.length) h+=`<div class="field"><span style="display:block;font-size:.85rem;font-weight:600;margin-bottom:6px">Attendance</span><div class="checks">${ps.map(x=>`<label><input type="checkbox" name="att" value="${x.id}" ${r.attendance[x.id]?'checked':''}>${esc(x.name)}</label>`).join('')}</div></div>`;
-  return h;
+  return ps.length?`<div class="field"><span>Attendance</span><div class="checks">${ps.map(x=>`<label><input type="checkbox" name="att" value="${x.id}" ${r.attendance[x.id]?'checked':''}>${esc(x.name)}</label>`).join('')}</div></div>`:'';
 }
 function payForm(c,x){
   const n=!x;
@@ -571,15 +605,15 @@ function payForm(c,x){
   ${n&&cur().v!=='client'?clientSelect(c.id):''}
   <div class="two"><label class="field"><span>Amount (₹)</span><input type="number" inputmode="numeric" id="f_amt" value="${esc(x.amount)}" placeholder="${bal>0?bal:''}">${n&&bal>0?`<small>Balance is ${money(bal)}</small>`:''}</label><label class="field"><span>Date</span><input type="date" id="f_pdate" value="${esc(x.date)}"></label></div>
   <label class="field"><span>Paid by</span><select id="f_mode">${opt(MODES,x.mode)}</select></label>
-  <label class="field"><span>Note</span><input type="text" id="f_pnote" value="${esc(x.note)}" placeholder="e.g. Advance, second instalment"></label>
-  <div class="btns fill"><button class="btn primary" data-act="savePay" data-c="${c.id}" data-x="${x.id||''}">${n?'Record payment':'Save changes'}</button>${n?'':`<button class="btn danger" data-act="delPay" data-c="${c.id}" data-x="${x.id}">Delete</button>`}</div>`);
+  ${moreDetails(!n&&!!x.note,`<label class="field"><span>Note</span><input type="text" id="f_pnote" value="${esc(x.note)}" placeholder="e.g. Advance, second instalment"></label>`)}
+  ${n?'':deleteRow('Delete payment','delPay',`data-c="${c.id}" data-x="${x.id}"`)}`,{save:{act:'savePay',data:{c:c.id,x:x.id||''},label:n?'Add':'Save'}});
 }
 function chargeForm(c,x){
   const n=!x;x=x||{label:'',amount:''};
   openSheet(n?'Add charge':'Edit charge',`
   <label class="field"><span>What for</span><input type="text" id="f_clabel" value="${esc(x.label)}" list="presets" placeholder="e.g. Props"><datalist id="presets">${CHARGE_PRESETS.map(p=>`<option value="${esc(p)}">`).join('')}</datalist></label>
   <label class="field"><span>Amount (₹)</span><input type="number" inputmode="numeric" id="f_camt" value="${esc(x.amount)}" placeholder="e.g. 5000"><small>Use a negative amount for a discount.</small></label>
-  <div class="btns fill"><button class="btn primary" data-act="saveCharge" data-c="${c.id}" data-x="${x.id||''}">${n?'Add charge':'Save changes'}</button>${n?'':`<button class="btn danger" data-act="delCharge" data-c="${c.id}" data-x="${x.id}">Delete</button>`}</div>`);
+  ${n?'':deleteRow('Delete charge','delCharge',`data-c="${c.id}" data-x="${x.id}"`)}`,{save:{act:'saveCharge',data:{c:c.id,x:x.id||''},label:n?'Add':'Save'}});
 }
 // One sheet for every WhatsApp message: template chips, editable text, recipient, send or copy.
 function composer(){
@@ -785,6 +819,7 @@ document.addEventListener('change',e=>{
     const tmp={...r,perfIds:t.id==='f_client'?[]:[...document.querySelectorAll('input[name=rp]:checked')].map(x=>x.value),attendance:{...r.attendance}};
     document.querySelectorAll('input[name=att]:checked').forEach(x=>tmp.attendance[x.value]=true);
     $('#rehPerfs').innerHTML=rehPerfsHTML(c,tmp);
+    if($('#rehAttend')) $('#rehAttend').innerHTML=rehAttendHTML(c,tmp);
   }
   if(t.id==='f_client'&&document.querySelector('[data-act=savePay]')){const c=getC(t.value);const sm=$('#f_amt')&&$('#f_amt').nextElementSibling;if(c){const bal=totals(c).bal;$('#f_amt').placeholder=bal>0?bal:'';if(sm&&sm.tagName==='SMALL') sm.textContent=bal>0?'Balance is '+money(bal):''}}
 });
