@@ -291,3 +291,10 @@ svg.i.row-chev{flex:none;width:16px;height:16px;color:var(--muted);opacity:.6}
 .row-title.split .clip{min-width:0;overflow:hidden;text-overflow:ellipsis}
 .row-title.split .tail{flex:none}
 .toast button{min-height:44px;min-width:44px}
+
+/* Clients list */
+.searchbox input{background:var(--sunk);border:0;border-radius:var(--radius-ctl)}
+.row-end .row-due{display:block;color:var(--warn);font-weight:600}
+.row-sub .badge{margin-left:4px}
+.chips{gap:6px}
+.chip{padding:6px 11px;font-size:.875rem}

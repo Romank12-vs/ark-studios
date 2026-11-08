@@ -140,10 +140,6 @@ function whenBadge(c){
   return `<span class="badge ${d<=7&&readyOf(c)<all?'b-soon':''}">${txt}</span>`;
 }
 const statusBadge=c=>`<span class="badge b-${c.status}">${(STATUSES.find(s=>s.k===c.status)||{}).l||''}</span>`;
-function eqBars(songs){
-  if(!songs.length) return '<span class="count">No songs yet</span>';
-  return songs.map(s=>{const n=doneN(s);return `<i style="--h:${n/5}" class="${n===0?'zero':n===5?'full':''}"></i>`}).join('');
-}
 function gcalLink(c,r){
   const start=(r.date+'T'+(r.time||'10:00')).replace(/[-:]/g,'')+'00';
   const sd=new Date(r.date+'T'+(r.time||'10:00')+':00');sd.setMinutes(sd.getMinutes()+(+r.mins||90));
@@ -256,15 +252,15 @@ function homeView(){
   }).join(''):`<div class="row"><span class="row-main"><span class="row-sub">All caught up</span></span></div>`;
   return h+'</div>';
 }
-function clientCard(c){
-  const songs=songsOf(c),r=readyOf(c),{bal}=totals(c);
-  const meta=[c.event,fmtDate(c.date)].filter(Boolean).map(esc).join(', ');
-  return `<button class="card" data-act="open" data-c="${c.id}">
-    <div class="row"><div style="min-width:0"><div class="name display">${esc(c.name)}</div>${meta?`<div class="meta">${meta}</div>`:''}</div>
-    <div class="badges">${c.status!=='booked'?statusBadge(c):''}${whenBadge(c)}</div></div>
-    <div class="foot"><div class="eq" aria-hidden="true">${eqBars(songs)}</div>
-    <span class="count">${songs.length?`<b>${r}</b>/${songs.length} ready`:''}${bal>0&&c.status!=='enquiry'&&c.status!=='cancelled'?`<br><span style="color:var(--warn);font-weight:600">${money(bal)} due</span>`:''}</span></div>
-  </button>`;
+// One client per row: name, event timing, songs ready and anything due.
+function clientRow(c){
+  const songs=songsOf(c),r=readyOf(c),{bal}=totals(c),d=c.date?daysLeft(c.date):null;
+  const when=d===null?'':d<0?'event passed':d===0?'today':d===1?'tomorrow':d+' days';
+  const sub=[c.event,when].filter(Boolean).join(' · ')||'No event date';
+  const urgent=d!==null&&d>=0&&d<=7&&r<songs.length&&c.status!=='cancelled';
+  const due=bal>0&&(c.status==='booked'||c.status==='done');
+  const badge=c.status==='enquiry'||c.status==='cancelled'?' '+statusBadge(c):'';
+  return `<button class="row" data-act="open" data-c="${c.id}"><span class="row-main"><span class="row-title">${esc(c.name)}</span><span class="row-sub${urgent?' tone-warn':''}">${esc(sub)}${badge}</span></span><span class="row-end">${songs.length?`${r}/${songs.length} ready`:''}${due?`<span class="row-due">${money(bal)} due</span>`:''}</span>${ic('chev','row-chev')}</button>`;
 }
 
 function songsInProgressRow(){
@@ -274,7 +270,7 @@ function songsInProgressRow(){
 function clientsView(){
   let h=`${pageHead('Clients')}
   <div class="searchbox">${ic('search')}<input type="search" id="q" placeholder="Search clients, events or songs" value="${esc(ui.q)}" aria-label="Search"></div>
-  <div class="chips" role="group" aria-label="Filter">${[['booked','Active'],['enquiry','Enquiries'],['done','Completed'],['all','All']].map(([k,l])=>`<button class="chip" data-act="clientsFilter" data-f="${k}" aria-pressed="${ui.clientFilter===k}">${l} <span class="muted">${k==='all'?state.clients.length:state.clients.filter(c=>c.status===k).length}</span></button>`).join('')}</div>
+  <div class="chips" role="group" aria-label="Filter">${[['booked','Active'],['enquiry','Enquiries'],['done','Done'],['all','All']].map(([k,l])=>`<button class="chip" data-act="clientsFilter" data-f="${k}" aria-pressed="${ui.clientFilter===k}">${l} <span class="muted">${k==='all'?state.clients.length:state.clients.filter(c=>c.status===k).length}</span></button>`).join('')}</div>
   ${songsInProgressRow()}
   <div id="clientList" style="margin-top:12px">${clientListHTML()}</div>`;
   return h;
@@ -287,7 +283,7 @@ function clientListHTML(){
   list.sort((a,b)=>(a.date||'9999').localeCompare(b.date||'9999'));
   if(ui.clientFilter==='done'&&!q) list.reverse();
   if(!list.length) return `<div class="empty"><p>${q?'Nothing matches “'+esc(ui.q)+'”.':'No clients here yet.'}</p></div>`;
-  return list.map(clientCard).join('');
+  return `<div class="group">${list.map(clientRow).join('')}</div>`;
 }
 
 function clientView(){
