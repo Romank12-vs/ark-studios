@@ -280,3 +280,14 @@ nav.tabs{view-transition-name:tabs}
 @keyframes vt-out-left{to{transform:translateX(-30%)}}
 @keyframes vt-in-left{from{transform:translateX(-30%)}}
 @keyframes vt-out-right{to{transform:translateX(100%)}}
+
+/* Today */
+.row-time{flex:none;width:28px;text-align:center}
+.row-tap{display:block;background:none;border:0;padding:0;text-align:left;color:inherit;font:inherit;min-height:44px}
+.row .btn.sm{flex:none}
+svg.i.row-chev{flex:none;width:16px;height:16px;color:var(--muted);opacity:.6}
+.card-accent svg.i{flex:none}
+.row-title.split{display:flex;min-width:0}
+.row-title.split .clip{min-width:0;overflow:hidden;text-overflow:ellipsis}
+.row-title.split .tail{flex:none}
+.toast button{min-height:44px;min-width:44px}

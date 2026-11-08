@@ -88,6 +88,7 @@ const ICON={
  wa:'<path d="M4 20l1.3-3.8A8 8 0 1 1 8 19z"/><path d="M9 9.5c0 3 2.5 5.5 5.5 5.5l1-1.5-2-1-1 .8a4 4 0 0 1-2-2l.8-1-1-2z"/>',
  phone:'<path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2z"/>',
  back:'<path d="M15 5l-7 7 7 7"/>',
+ chev:'<path d="m9 5 7 7-7 7"/>',
  play:'<path d="M8 5.5v13l10.5-6.5z"/>',
  list:'<path d="M9 6h11M9 12h11M9 18h11M4.5 6h.01M4.5 12h.01M4.5 18h.01"/>',
  search:'<circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/>',
@@ -214,56 +215,46 @@ window.addEventListener('popstate',()=>{
 function pageHead(title,opts){
   opts=opts||{};
   return `<div class="topbar root" id="topbar"><span class="t">${title}</span>${opts.action||''}</div>
-  <header class="pagehead"><h1 class="large-title">${title}</h1>${opts.sub?`<p class="page-sub">${opts.sub}</p>`:''}</header>`;
+  <header class="pagehead">${opts.eyebrow?`<p class="page-sub">${opts.eyebrow}</p>`:''}<h1 class="large-title">${title}</h1>${opts.sub?`<p class="page-sub">${opts.sub}</p>`:''}</header>`;
 }
 
 /* ================= views ================= */
 function emptyHero(text,btns){return `<div class="empty"><div class="eq" aria-hidden="true">${[.3,.6,1,.5,.75].map(h=>`<i style="--h:${h}"></i>`).join('')}</div><p>${text}</p><div class="btns" style="justify-content:center">${btns}</div></div>`}
 
+// "Long event name · 16 days": only the name shortens, the countdown stays visible.
+function splitTitle(t){const i=t.lastIndexOf(' · ');return i<0?`<span class="row-title">${esc(t)}</span>`:`<span class="row-title split"><span class="clip">${esc(t.slice(0,i))}</span><span class="tail">&nbsp;· ${esc(t.slice(i+3))}</span></span>`}
 function homeView(){
-  const st=state.settings, who=st.name?', '+esc(st.name.split(' ')[0]):'';
-  let h=`<header class="pagehead"><p style="margin:0">${esc(fmtDate(todayISO(),{weekday:'long',day:'numeric',month:'long'}))}</p><h1 class="display">${greet()}${who}</h1></header>`;
-  if(ui.update) h+=`<section class="sec"><div class="list"><div class="li"><div class="grow"><b>ARK Studios ${esc(ui.update.version)} is available</b><small>Installs over this app. Your data stays.</small></div><a class="btn sm primary" href="${esc(ui.update.url)}">Download</a><button class="btn sm ghost" data-act="dismissUpdate">Not now</button></div></div></section>`;
+  const st=state.settings, t=todayISO();
+  const eyebrow=esc(fmtDate(t,{weekday:'long',day:'numeric',month:'long'}))+' · '+greet()+(st.name?', '+esc(st.name.split(' ')[0]):'');
+  let h=pageHead('Today',{eyebrow});
+  if(ui.update) h+=`<div class="group" style="margin-top:12px"><div class="row"><span class="row-main"><span class="row-title">ARK Studios ${esc(ui.update.version)} is available</span><span class="row-sub">Installs over this app. Your data stays.</span></span><a class="btn sm primary" href="${esc(ui.update.url)}">Download</a><button class="btn sm ghost" data-act="dismissUpdate">Not now</button></div></div>`;
   if(!state.clients.length){
-    return h+emptyHero('Track every client’s performances, songs, rehearsals and payments, and send WhatsApp updates in one tap.',`<button class="btn primary" data-act="newClient">${ic('plus')}Add first client</button><button class="btn ghost" data-act="sample">Explore with sample data</button>`);
+    return h+emptyHero('Track every client’s performances, songs, rehearsals and payments, and send WhatsApp updates in one tap.',`<button class="btn primary" data-act="newClient">${ic('plus')}Add first client</button><button class="btn ghost" data-act="sample">Explore with sample data</button><button class="btn ghost" data-act="importPick">Restore from a backup file</button>`);
   }
-  const t=todayISO();
-  // today
-  const todays=[];state.clients.forEach(c=>c.rehearsals.forEach(r=>{if(r.date===t&&r.status!=='cancelled') todays.push({c,r})}));
-  todays.sort((a,b)=>(a.r.time||'').localeCompare(b.r.time||''));
-  const evToday=state.clients.filter(c=>c.date===t&&c.status!=='cancelled');
-  h+=`<section class="sec"><div class="sec-head"><h2>Today</h2><button class="link" data-act="push" data-v="schedule">Full schedule</button></div>`;
-  if(!todays.length&&!evToday.length) h+=`<div class="list"><div class="li"><div class="grow"><b>No rehearsals today</b><small>${nextRehText()}</small></div></div></div>`;
-  else{
-    h+='<div class="list">';
-    evToday.forEach(c=>{h+=`<button class="li" data-act="open" data-c="${c.id}"><div class="timecol">🎉</div><div class="grow"><b>Event day: ${esc(c.name)}</b><small>${esc(c.event||'')}${c.venue?', '+esc(c.venue):''}</small></div></button>`});
-    todays.forEach(({c,r})=>{const a=attendCount(c,r);h+=`<div class="li"><div class="timecol">${esc(fmtTime(r.time)||'—')}<small>${r.mins} min</small></div><button class="grow" style="background:none;border:0;padding:0;text-align:left" data-act="editReh" data-c="${c.id}" data-r="${r.id}"><b>${esc(c.name)}</b><small>${esc(perfNames(c,r.perfIds).join(', ')||'Rehearsal')}, ${esc(r.place)}${r.status==='done'?', done':''}</small></button>${r.status==='planned'?`<button class="btn sm wa" data-act="compose" data-c="${c.id}" data-t="rehearsal" data-r="${r.id}" aria-label="Send reminder">${ic('wa')}</button>`:`<span class="badge b-done">${a.of?a.n+'/'+a.of:'Done'}</span>`}</div>`});
-    h+='</div>';
-  }
-  h+='</section>';
-  // money
-  let due=0,dueN=0,month=0;const m=t.slice(0,7);
+  // rehearsals: today's, then the next one coming up
+  const {items,next}=ArkToday.todayAgenda(state,t);
+  h+=`<div class="group-head"><span>Rehearsals</span><button class="link" data-act="push" data-v="schedule">Full schedule</button></div><div class="group">`;
+  items.forEach(it=>{
+    const c=it.client;
+    if(it.kind==='event'){h+=`<button class="row" data-act="open" data-c="${c.id}"><span class="row-time">🎉</span><span class="row-main"><span class="row-title">Event day · ${esc(c.name)}</span><span class="row-sub">${esc([c.event,c.venue].filter(Boolean).join(' · ')||'Today')}</span></span>${ic('chev','row-chev')}</button>`;return}
+    const r=it.rehearsal,a=attendCount(c,r),where=r.place==='Venue'&&c.venue?c.venue:r.place;
+    h+=`<div class="row"><button class="row-main row-tap" data-act="editReh" data-c="${c.id}" data-r="${r.id}"><span class="row-title">${esc(fmtTime(r.time)||'Any time')} · ${esc(c.name)}</span><span class="row-sub">${esc([perfNames(c,r.perfIds).join(', ')||'All performances',where].join(' · '))}</span></button>${r.status==='planned'?`<button class="btn sm wa" data-act="compose" data-c="${c.id}" data-t="rehearsal" data-r="${r.id}">${ic('wa')}Remind</button>`:`<span class="badge b-done">${a.of?a.n+'/'+a.of:'Done'}</span>`}</div>`;
+  });
+  if(next){const c=next.client,r=next.rehearsal;h+=`<button class="row" data-act="editReh" data-c="${c.id}" data-r="${r.id}"><span class="row-main"><span class="row-sub">${esc(dayLabel(r.date))}${r.time?' '+esc(fmtTime(r.time)):''} · ${esc(c.name)}</span></span>${ic('chev','row-chev')}</button>`}
+  if(!items.length&&!next) h+=`<div class="row"><span class="row-main"><span class="row-sub">No rehearsals planned</span></span></div>`;
+  h+='</div>';
+  // money to collect (booked and completed clients), as before
+  let due=0,dueN=0;
   state.clients.forEach(c=>{if(c.status==='cancelled'||c.status==='enquiry') return;const b=totals(c).bal;if(b>0){due+=b;dueN++}});
-  state.clients.forEach(c=>c.payments.forEach(p=>{if(p.date.slice(0,7)===m) month+=p.amount}));
-  const active=state.clients.filter(c=>c.status==='booked').length, enq=state.clients.filter(c=>c.status==='enquiry').length;
-  h+=`<section class="sec"><div class="kpis">
-    <button class="kpi big" data-act="nav" data-v="money" style="text-align:left;cursor:pointer"><div><span>To collect from ${dueN} client${dueN===1?'':'s'}</span><b>${money(due)}</b></div><span class="btn sm">Payments</span></button>
-    <div class="kpi"><b>${money(month)}</b><span>Received this month</span></div>
-    <button class="kpi" data-act="clientsFilter" data-f="booked" style="text-align:left"><b>${active}</b><span>Active bookings</span></button>
-    <button class="kpi" data-act="clientsFilter" data-f="enquiry" style="text-align:left"><b>${enq}</b><span>Open enquiries</span></button>
-  </div></section>`;
-  // work
-  const counts=[0,0,0,0,0];state.clients.filter(isActive).forEach(c=>songsOf(c).forEach(s=>{const i=nextIdx(s);if(i<5) counts[i]++}));
-  h+=`<section class="sec"><div class="sec-head"><h2>Songs in progress</h2><button class="link" data-act="todo" data-s="-1">See all</button></div><div class="stages">${counts.map((n,i)=>`<button class="stage ${n?'':'zero'}" data-act="todo" data-s="${i}"><b>${n}</b><span>${STAGE_SHORT[i]}</span></button>`).join('')}</div></section>`;
-  // upcoming events
-  const ups=state.clients.filter(c=>c.status!=='cancelled'&&c.date&&daysLeft(c.date)>=0).sort((a,b)=>a.date.localeCompare(b.date)).slice(0,4);
-  if(ups.length){h+=`<section class="sec"><div class="sec-head"><h2>Coming up</h2><button class="link" data-act="nav" data-v="clients">All clients</button></div>${ups.map(clientCard).join('')}</section>`}
-  return h;
-}
-function nextRehText(){
-  const t=todayISO();let n=null;
-  state.clients.forEach(c=>c.rehearsals.forEach(r=>{if(r.status==='planned'&&r.date>t&&(!n||(r.date+r.time)<(n.r.date+n.r.time))) n={c,r}}));
-  return n?`Next: ${esc(n.c.name)}, ${dayLabel(n.r.date)}${n.r.time?' at '+fmtTime(n.r.time):''}`:'No rehearsals scheduled yet';
+  h+=`<div style="margin-top:16px"><button class="card-accent" data-act="nav" data-v="money"><span class="row-main"><span class="lbl">${dueN?`To collect · ${dueN} client${dueN===1?'':'s'}`:'Nothing to collect'}</span><span class="big">${money(due)}</span></span>${ic('chev')}</button></div>`;
+  // needs attention: overdue rehearsals, unready songs, dues, enquiries (max five)
+  const rows=ArkToday.needsAttention(state,t);
+  h+=`<div class="group-head"><span>Needs attention</span></div><div class="group">`;
+  h+=rows.length?rows.map(r=>{
+    const act=r.kind==='rehearsal'?`data-act="editReh" data-c="${r.clientId}" data-r="${r.rehearsalId}"`:`data-act="open" data-c="${r.clientId}"${r.kind==='due'?' data-t="pay"':''}`;
+    return `<button class="row" ${act}><span class="row-dot tone-${r.tone}"></span><span class="row-main">${splitTitle(r.title)}<span class="row-sub tone-${r.tone}">${esc(r.detail)}</span></span>${ic('chev','row-chev')}</button>`;
+  }).join(''):`<div class="row"><span class="row-main"><span class="row-sub">All caught up</span></span></div>`;
+  return h+'</div>';
 }
 function clientCard(c){
   const songs=songsOf(c),r=readyOf(c),{bal}=totals(c);
@@ -276,10 +267,15 @@ function clientCard(c){
   </button>`;
 }
 
+function songsInProgressRow(){
+  const n=state.clients.filter(isActive).reduce((k,c)=>k+songsOf(c).filter(s=>nextIdx(s)<5).length,0);
+  return `<div class="group" style="margin-top:12px"><button class="row" data-act="todo" data-s="-1"><span class="row-main"><span class="row-title">Songs in progress</span><span class="row-sub">${n?n+' unfinished song'+(n>1?'s':'')+' for active clients':'Nothing pending'}</span></span>${ic('chev','row-chev')}</button></div>`;
+}
 function clientsView(){
   let h=`${pageHead('Clients')}
   <div class="searchbox">${ic('search')}<input type="search" id="q" placeholder="Search clients, events or songs" value="${esc(ui.q)}" aria-label="Search"></div>
   <div class="chips" role="group" aria-label="Filter">${[['booked','Active'],['enquiry','Enquiries'],['done','Completed'],['all','All']].map(([k,l])=>`<button class="chip" data-act="clientsFilter" data-f="${k}" aria-pressed="${ui.clientFilter===k}">${l} <span class="muted">${k==='all'?state.clients.length:state.clients.filter(c=>c.status===k).length}</span></button>`).join('')}</div>
+  ${songsInProgressRow()}
   <div id="clientList" style="margin-top:12px">${clientListHTML()}</div>`;
   return h;
 }
