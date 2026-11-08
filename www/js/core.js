@@ -22,11 +22,18 @@ const V1_TPL={
  finalize:"Hi {client} 😊\n\n{event} ke liye ye songs abhi final karne baaki hain:\n\n{finalizeList}\n\nPlease jaldi confirm kar dijiye taaki editing aur choreography start ho sake 🙏\n\n— {studio}",
  practice:"Hi {client} 😊\n\nIn songs ki choreography ho chuki hai, bas practice baaki hai:\n\n{practiceList}\n\nRoz ek baar video dekh ke practice kar lijiye 💃 Event mein sirf {daysLeft} din bache hain!\n\n— {studio}",
  custom:"Hi {client} 😊\n\n\n\n— {studio}"};
-function blank(){return {v:2,clients:[],settings:{name:'',studio:'',phone:'',upi:'',lang:'hinglish',theme:'auto',templates:{}},updatedAt:0}}
+const LEAD_CHOICES=[30,60,120];
+const remDefaults=()=>({rehearsal:false,leadMins:60,digest:false,digestTime:'09:00'});
+function blank(){return {v:2,clients:[],settings:{name:'',studio:'',phone:'',upi:'',lang:'hinglish',theme:'auto',templates:{},reminders:remDefaults(),lastAutoBackupAt:0,lastSharedBackupAt:0,backupNudgeSnoozedUntil:0},updatedAt:0}}
 function normalize(s){
   const b=blank(); s=s&&typeof s==='object'?s:{};
   const st=s.settings||{};
-  b.settings={...b.settings,...st,templates:{}};
+  const rm=st.reminders&&typeof st.reminders==='object'?st.reminders:{},rd=remDefaults();
+  b.settings={...b.settings,...st,templates:{},reminders:{
+    rehearsal:rm.rehearsal===true,
+    leadMins:LEAD_CHOICES.includes(rm.leadMins)?rm.leadMins:rd.leadMins,
+    digest:rm.digest===true,
+    digestTime:typeof rm.digestTime==='string'&&/^\d{2}:\d{2}$/.test(rm.digestTime)?rm.digestTime:rd.digestTime}};
   const tp=st.templates||{};
   if(s.v===2) b.settings.templates={...tp};
   else Object.keys(tp).forEach(k=>{if(tp[k]&&tp[k]!==V1_TPL[k]) b.settings.templates[k==='full'?'update':k]=tp[k]}); // keep only v1 templates she edited
@@ -67,6 +74,6 @@ function parseBackup(text){
   return d;
 }
 
-const api={STEPS,V1_TPL,uid,pad,isoOf,todayISO,addDays,daysLeft,fmtDate,dayLabel,fmtTime,parseDur,fmtDur,money,num,waNumber,waHref,nextIdx,doneN,nextStepKey,nextStepLabel,nextStepDoneLabel,songsOf,readyOf,totals,isActive,upcomingReh,blank,normalize,BACKUP_MARKER,backupFileName,parseBackup};
+const api={LEAD_CHOICES,STEPS,V1_TPL,uid,pad,isoOf,todayISO,addDays,daysLeft,fmtDate,dayLabel,fmtTime,parseDur,fmtDur,money,num,waNumber,waHref,nextIdx,doneN,nextStepKey,nextStepLabel,nextStepDoneLabel,songsOf,readyOf,totals,isActive,upcomingReh,blank,normalize,BACKUP_MARKER,backupFileName,parseBackup};
 if(typeof module!=='undefined'&&module.exports) module.exports=api; else window.TaalCore=api;
 })();

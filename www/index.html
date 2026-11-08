@@ -32,7 +32,7 @@
 <script>
 (function(){
 "use strict";
-const {STEPS,V1_TPL,uid,pad,isoOf,todayISO,addDays,daysLeft,fmtDate,dayLabel,fmtTime,parseDur,fmtDur,money,num,waNumber,waHref,nextIdx,doneN,nextStepKey,nextStepLabel,nextStepDoneLabel,songsOf,readyOf,totals,isActive,upcomingReh,blank,normalize,BACKUP_MARKER,backupFileName,parseBackup}=window.TaalCore;
+const {LEAD_CHOICES,STEPS,V1_TPL,uid,pad,isoOf,todayISO,addDays,daysLeft,fmtDate,dayLabel,fmtTime,parseDur,fmtDur,money,num,waNumber,waHref,nextIdx,doneN,nextStepKey,nextStepLabel,nextStepDoneLabel,songsOf,readyOf,totals,isActive,upcomingReh,blank,normalize,BACKUP_MARKER,backupFileName,parseBackup}=window.TaalCore;
 /* ================= constants ================= */
 const KEY='taal-v2', OLD_KEY='taal-choreo-v1';
 const STEP_DONE=['Song finalised','Editing done','Choreography done','Taught','Practice done'];
@@ -117,8 +117,8 @@ let ui={stack:[{v:'home'}],clientFilter:'booked',q:'',schedSeg:'upcoming',todoSt
 const syncLabel='Saved on this device';
 
 /* ================= persistence ================= */
-function save(){
-  state.updatedAt=Date.now();
+function save(){state.updatedAt=Date.now();quietSave()}
+function quietSave(){
   try{localStorage.setItem(KEY,JSON.stringify(state))}catch(e){}
 }
 async function downloadFile(name,text,type){
@@ -710,7 +710,7 @@ document.addEventListener('click',async e=>{
     case 'todo':ui.todoStage=+b.dataset.s;go('todo');break;
     case 'todoStage':ui.todoStage=+b.dataset.s;render(false);break;
     case 'sample':sample();break;
-    case 'dismissUpdate':if(ui.update){state.settings.updateDismissedVersion=ui.update.version;ui.update=null;save();render(false)}break;
+    case 'dismissUpdate':if(ui.update){state.settings.updateDismissedVersion=ui.update.version;ui.update=null;quietSave();render(false)}break;
     case 'close':closeSheet();break;
     case 'toastAct':{const fn=toastFn;toastFn=null;$('#toast').classList.remove('show');if(fn) fn();break;}
 
@@ -858,7 +858,7 @@ async function maybeCheckUpdate(){
   const st=state.settings;
   const r=await ArkUpdate.checkForUpdate({now:Date.now(),lastCheckAt:st.lastUpdateCheckAt,current:APP_VERSION,dismissed:st.updateDismissedVersion,fetchFn:(u,o)=>fetch(u,o)});
   if(!r) return;
-  st.lastUpdateCheckAt=r.checkedAt;save();
+  st.lastUpdateCheckAt=r.checkedAt;quietSave();
   ui.update=r.banner;
   if(cur().v==='home') render(false);
 }

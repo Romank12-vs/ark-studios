@@ -82,3 +82,22 @@ test('index.html imports every core helper', () => {
   const imported = new Set(/const \{([^}]+)\}=window\.TaalCore;/.exec(html)[1].split(',').map(x => x.trim()));
   for (const name of Object.keys(C)) assert.ok(imported.has(name), `${name} is exported by core.js but not imported in index.html`);
 });
+
+test('v1.2 settings defaults', () => {
+  const s = C.blank().settings;
+  assert.deepEqual(s.reminders, { rehearsal: false, leadMins: 60, digest: false, digestTime: '09:00' });
+  assert.notEqual(s.reminders, C.blank().settings.reminders);
+  assert.equal(s.lastAutoBackupAt, 0);
+  assert.equal(s.lastSharedBackupAt, 0);
+  assert.equal(s.backupNudgeSnoozedUntil, 0);
+  assert.deepEqual(C.LEAD_CHOICES, [30, 60, 120]);
+});
+
+test('normalize repairs reminder settings', () => {
+  const r = rem => C.normalize({ clients: [], settings: { reminders: rem } }).settings.reminders;
+  const def = { rehearsal: false, leadMins: 60, digest: false, digestTime: '09:00' };
+  assert.deepEqual(r(undefined), def);
+  assert.deepEqual(r({ rehearsal: true, leadMins: 120 }), { ...def, rehearsal: true, leadMins: 120 });
+  assert.deepEqual(r({ rehearsal: 'yes', leadMins: 45, digest: true, digestTime: '9am' }), { ...def, digest: true });
+  assert.deepEqual(C.normalize(v2).settings.reminders, def);
+});
