@@ -1,7 +1,7 @@
 // ARK Studios offline support for the web version (the Android app never registers this worker).
 // Network first for everything, so a deploy is picked up on the next load and old scripts are never
 // mixed with a new page; the cache is only the fallback when there is no connection.
-const CACHE = 'ark-studios-v3';
+const CACHE = 'ark-studios-v4';
 // Everything the page needs at startup, so it works offline after one visit (the scripts load before
 // this worker takes control, so the runtime cache alone would miss them). test/offline-shell.test.js
 // fails if index.html or fonts.css starts using a file that is not listed here.
