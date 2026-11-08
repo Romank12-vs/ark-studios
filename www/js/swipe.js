@@ -6,9 +6,10 @@
 
 const LOCK_PX = 8, FLICK = 0.5; // px before the axis locks; px/ms that counts as a flick
 
-function swipeDecision({dx, dy, vx, width, open, end}){
+function swipeDecision({dx, dy, vx, width, open, end, cancel}){
   const base = open ? -width : 0;
   const rest = {offset: base, state: open ? 'open' : 'closed'};
+  if(cancel) return {axis: null, ...rest}; // a cancelled gesture goes back to where it started
   if(Math.max(Math.abs(dx), Math.abs(dy)) < LOCK_PX) return {axis: null, ...rest};
   if(Math.abs(dx) <= Math.abs(dy)) return {axis: 'y', ...rest};
   const offset = Math.min(0, Math.max(-width, base + dx));
@@ -17,8 +18,17 @@ function swipeDecision({dx, dy, vx, width, open, end}){
   return {axis: 'x', offset: opens ? -width : 0, state: opens ? 'open' : 'closed'};
 }
 
+// What a press does while a row may be open: a press elsewhere only closes it (and its click is swallowed),
+// a tap on the open row's front closes it, a press on its action button runs normally.
+function pressPlan({hasOpen, sameRow, onAction}){
+  const none = {closeNow: false, closeOnTap: false, swallowClick: false, drag: !onAction};
+  if(!hasOpen) return none;
+  if(!sameRow) return {closeNow: true, closeOnTap: false, swallowClick: true, drag: false};
+  return onAction ? {...none, drag: false} : {...none, closeOnTap: true};
+}
+
 function attachSwipe(root, onAction){
-  let openRow = null, drag = null, swallowUntil = 0;
+  let openRow = null, drag = null, swallowUntil = 0, swallowClick = false;
   const reduced = () => typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
   const front = row => row.querySelector('.swipe-front');
   const widthOf = row => (row.querySelector('.swipe-act') || {}).offsetWidth || 76;
@@ -31,9 +41,12 @@ function attachSwipe(root, onAction){
 
   root.addEventListener('pointerdown', e => {
     const row = e.target.closest('[data-swipe]');
-    if(openRow && (!openRow.isConnected || openRow !== row)) close();
-    if(!row || e.target.closest('.swipe-act') || e.button > 0) return;
-    drag = {row, x: e.clientX, y: e.clientY, open: row === openRow, width: widthOf(row), axis: null, id: e.pointerId, samples: [{x: e.clientX, t: e.timeStamp}]};
+    swallowClick = false;
+    const plan = pressPlan({hasOpen: !!(openRow && openRow.isConnected), sameRow: row === openRow, onAction: !!e.target.closest('.swipe-act')});
+    if(openRow && !openRow.isConnected) openRow = null;
+    if(plan.closeNow){ close(); swallowClick = plan.swallowClick; }
+    if(!plan.drag || !row || e.button > 0) return;
+    drag = {row, closeOnTap: plan.closeOnTap, x: e.clientX, y: e.clientY, open: row === openRow, width: widthOf(row), axis: null, id: e.pointerId, samples: [{x: e.clientX, t: e.timeStamp}]};
   });
 
   root.addEventListener('pointermove', e => {
@@ -50,7 +63,11 @@ function attachSwipe(root, onAction){
   const finish = e => {
     if(!drag || e.pointerId !== drag.id) return;
     const d = drag; drag = null;
-    if(d.axis !== 'x') return;
+    if(e.type === 'pointercancel'){ if(d.axis === 'x') place(d.row, d.open ? -d.width : 0, true); return; }
+    if(d.axis !== 'x'){
+      if(d.closeOnTap){ close(); swallowUntil = performance.now() + 350; }
+      return;
+    }
     const first = d.samples[0], dt = Math.max(1, e.timeStamp - first.t);
     const dec = swipeDecision({dx: e.clientX - d.x, dy: e.clientY - d.y, vx: (e.clientX - first.x) / dt, width: d.width, open: d.open, end: true});
     place(d.row, dec.offset, true);
@@ -61,11 +78,11 @@ function attachSwipe(root, onAction){
   root.addEventListener('pointercancel', finish);
 
   root.addEventListener('click', e => {
-    if(performance.now() < swallowUntil){ swallowUntil = 0; e.stopPropagation(); e.preventDefault(); return; }
+    if(swallowClick || performance.now() < swallowUntil){ swallowClick = false; swallowUntil = 0; e.stopPropagation(); e.preventDefault(); return; }
     if(e.target.closest(".swipe-act [data-act]")){ if(typeof onAction === "function") onAction(); close(); }
   }, true);
 }
 
-const api = {swipeDecision, attachSwipe};
+const api = {swipeDecision, pressPlan, attachSwipe};
 if(typeof module !== 'undefined' && module.exports) module.exports = api; else window.ArkSwipe = api;
 })();
