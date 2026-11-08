@@ -1,14 +1,13 @@
-// One-off: download the app's two Google Fonts (OFL) into www/fonts so the app never needs
+// One-off: download the app's Google Font (OFL) into www/fonts so the app never needs
 // the internet to look right. Kept so the fonts can be refreshed later:  node scripts/fetch-fonts.js
 const fs = require('node:fs');
 const path = require('node:path');
 
-const CSS_URL = 'https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,500;12..96,600;12..96,700&family=Rozha+One&display=swap';
+const CSS_URL = 'https://fonts.googleapis.com/css2?family=Rozha+One&display=swap';
 // A desktop Chrome user agent makes Google serve woff2.
 const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36';
 const KEEP = new Set(['latin', 'latin-ext']); // latin-ext carries the rupee sign (U+20B9)
-const LICENSES = {
-  'OFL-BricolageGrotesque.txt': 'https://raw.githubusercontent.com/google/fonts/main/ofl/bricolagegrotesque/OFL.txt',
+const LICENSES = {
   'OFL-RozhaOne.txt': 'https://raw.githubusercontent.com/google/fonts/main/ofl/rozhaone/OFL.txt',
 };
 const OUT = path.join(__dirname, '..', 'www', 'fonts');

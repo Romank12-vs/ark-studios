@@ -1,0 +1,129 @@
+{
+ "v": 2,
+ "updatedAt": 1762560000000,
+ "settings": {
+  "name": "Riya",
+  "studio": "Steps Studio",
+  "phone": "",
+  "upi": "",
+  "lang": "english",
+  "theme": "dark",
+  "templates": {
+   "update": "Custom {client}"
+  }
+ },
+ "clients": [
+  {
+   "id": "c1",
+   "name": "Priya & Arjun",
+   "phone": "98765 43210",
+   "event": "Sangeet",
+   "date": "2026-11-24",
+   "venue": "The Grand",
+   "status": "booked",
+   "source": "Instagram",
+   "notes": "",
+   "createdAt": 1760000000000,
+   "songsIncluded": "8",
+   "rehearsalsIncluded": "8",
+   "performances": [
+    {
+     "id": "p1",
+     "title": "Couple dance",
+     "type": "Sangeet",
+     "format": "Couple",
+     "people": "",
+     "props": "",
+     "performers": [
+      {
+       "id": "x1",
+       "name": "Priya"
+      }
+     ],
+     "songs": [
+      {
+       "id": "s1",
+       "title": "Tum Se Hi",
+       "artist": "Jab We Met",
+       "dur": 190,
+       "cut": "",
+       "ref": "",
+       "tutorial": "",
+       "notes": "",
+       "steps": {
+        "final": true,
+        "edit": true
+       }
+      }
+     ]
+    }
+   ],
+   "rehearsals": [],
+   "charges": [
+    {
+     "id": "ch1",
+     "label": "Package",
+     "amount": "45000"
+    }
+   ],
+   "payments": [
+    {
+     "id": "pay1",
+     "date": "2026-10-01",
+     "amount": 15000,
+     "mode": "UPI",
+     "note": "Advance"
+    }
+   ]
+  },
+  {
+   "id": "c2",
+   "name": "St. Mary's Convent High School, Bandra West",
+   "phone": "",
+   "event": "Annual day celebration and prize distribution",
+   "date": "2026-11-20",
+   "venue": "School auditorium",
+   "status": "booked",
+   "source": "Referral",
+   "notes": "",
+   "createdAt": 1760000000000,
+   "songsIncluded": "2",
+   "rehearsalsIncluded": "10",
+   "performances": [
+    {
+     "id": "p2",
+     "title": "Annual day group performance for classes six to eight",
+     "type": "School / College",
+     "format": "Group",
+     "people": "",
+     "props": "",
+     "performers": [],
+     "songs": [
+      {
+       "id": "s2",
+       "title": "Chaiyya Chaiyya (extended edit with dhol outro)",
+       "artist": "Dil Se",
+       "dur": 300,
+       "cut": "",
+       "ref": "",
+       "tutorial": "",
+       "notes": "",
+       "steps": {
+        "final": true
+       }
+      }
+     ]
+    }
+   ],
+   "rehearsals": [],
+   "charges": [
+    {
+     "id": "ch2",
+     "label": "Choreography package",
+     "amount": 30000
+    }
+   ],
+   "payments": []
+  }
+ ]
+}
