@@ -59,6 +59,8 @@ const nextStepKey=s=>{const i=nextIdx(s);return i<5?STEPS[i].k:null};
 const nextStepLabel=s=>{const i=nextIdx(s);return i<5?NEXT_VERB[i]+' next':'Ready'};
 const nextStepDoneLabel=s=>{const i=nextIdx(s);return i<5?DONE_VERB[i]:null};
 const songsOf=c=>c.performances.flatMap(p=>p.songs);
+// A performance's running time in seconds: its timed songs added up (untimed songs count as 0).
+const perfDur=p=>p.songs.reduce((a,s)=>a+(Number.isFinite(s.dur)?s.dur:0),0);
 const readyOf=c=>songsOf(c).filter(s=>nextIdx(s)===5).length;
 function totals(c){const total=c.charges.reduce((a,x)=>a+x.amount,0),paid=c.payments.reduce((a,x)=>a+x.amount,0);return {total,paid,bal:total-paid}}
 const isActive=c=>c.status==='booked'||c.status==='enquiry';
@@ -83,6 +85,6 @@ function receiptPayment(c,id){
   for(const x of ps) if(!last||String(x.date||'').localeCompare(String(last.date||''))>=0) last=x;
   return last;
 }
-const api={receiptPayment,LEAD_CHOICES,STEPS,V1_TPL,uid,pad,isoOf,todayISO,addDays,daysLeft,fmtDate,dayLabel,fmtTime,parseDur,fmtDur,money,num,waNumber,waHref,nextIdx,doneN,nextStepKey,nextStepLabel,nextStepDoneLabel,songsOf,readyOf,totals,isActive,upcomingReh,blank,normalize,BACKUP_MARKER,backupFileName,parseBackup};
+const api={receiptPayment,LEAD_CHOICES,STEPS,V1_TPL,uid,pad,isoOf,todayISO,addDays,daysLeft,fmtDate,dayLabel,fmtTime,parseDur,fmtDur,money,num,waNumber,waHref,nextIdx,doneN,nextStepKey,nextStepLabel,nextStepDoneLabel,songsOf,perfDur,readyOf,totals,isActive,upcomingReh,blank,normalize,BACKUP_MARKER,backupFileName,parseBackup};
 if(typeof module!=='undefined'&&module.exports) module.exports=api; else window.TaalCore=api;
 })();

@@ -21,6 +21,14 @@ test('durations keep the existing dot-as-colon behaviour', () => {
   assert.equal(C.fmtDur(0), '');
 });
 
+test('a performance lasts as long as its timed songs together', () => {
+  const p = { songs: [{ dur: 225 }, { dur: 150 }, { dur: 0 }, {}] };
+  assert.equal(C.perfDur(p), 375);
+  assert.equal(C.fmtDur(C.perfDur(p)), '6:15');
+  assert.equal(C.perfDur({ songs: [] }), 0);
+  assert.equal(C.perfDur({ songs: [{ dur: 'x' }, { dur: 60 }] }), 60);
+});
+
 test('money and phone', () => {
   assert.equal(C.money(150000), '₹1,50,000');
   assert.equal(C.num('₹45,000'), 45000);

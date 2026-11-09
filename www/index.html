@@ -34,7 +34,7 @@
 <script>
 (function(){
 "use strict";
-const {receiptPayment,LEAD_CHOICES,STEPS,V1_TPL,uid,pad,isoOf,todayISO,addDays,daysLeft,fmtDate,dayLabel,fmtTime,parseDur,fmtDur,money,num,waNumber,waHref,nextIdx,doneN,nextStepKey,nextStepLabel,nextStepDoneLabel,songsOf,readyOf,totals,isActive,upcomingReh,blank,normalize,BACKUP_MARKER,backupFileName,parseBackup}=window.TaalCore;
+const {receiptPayment,LEAD_CHOICES,STEPS,V1_TPL,uid,pad,isoOf,todayISO,addDays,daysLeft,fmtDate,dayLabel,fmtTime,parseDur,fmtDur,money,num,waNumber,waHref,nextIdx,doneN,nextStepKey,nextStepLabel,nextStepDoneLabel,songsOf,perfDur,readyOf,totals,isActive,upcomingReh,blank,normalize,BACKUP_MARKER,backupFileName,parseBackup}=window.TaalCore;
 /* ================= constants ================= */
 const KEY='taal-v2', OLD_KEY='taal-choreo-v1';
 const STEP_DONE=['Song finalised','Editing done','Choreography done','Taught','Practice done'];
@@ -166,7 +166,7 @@ function msgVars(c,ctx={}){
   const last=receiptPayment(c,ctx.xid);
   const st=state.settings;
   let tot=0;
-  const run=c.performances.map((p,i)=>{const dur=p.songs.reduce((a,s)=>a+(s.dur||0),0);tot+=dur;
+  const run=c.performances.map((p,i)=>{const dur=perfDur(p);tot+=dur;
     return `${i+1}. *${p.title}*${p.format?' ('+p.format+')':''}${dur?' — '+fmtDur(dur):''}`+(p.songs.length?'\n'+p.songs.map(s=>'    • '+s.title+(s.dur?' '+fmtDur(s.dur):'')).join('\n'):'')}).join('\n');
   const p=ctx.pid&&getP(c,ctx.pid), s=p&&ctx.sid&&getS(p,ctx.sid);
   return {
@@ -315,12 +315,12 @@ function clientView(){
   return h+(tabk==='songs'?songsTab(c):tabk==='reh'?rehTab(c):payTab(c));
 }
 function songsTab(c){
-  const songs=songsOf(c),ready=readyOf(c),total=songs.reduce((a,s)=>a+(s.dur||0),0),notFinal=songs.filter(s=>!s.steps.final).length;
+  const songs=songsOf(c),ready=readyOf(c),total=c.performances.reduce((a,p)=>a+perfDur(p),0),notFinal=songs.filter(s=>!s.steps.final).length;
   let h='';
   if(songs.length) h+=`<p class="page-sub tab-summary">${ready} of ${songs.length} ready${total?' · total '+fmtDur(total):''}${c.songsIncluded?' · package '+songs.length+'/'+esc(c.songsIncluded):''}</p>`;
   c.performances.forEach((p,i)=>{
-    const pr=p.songs.filter(s=>nextIdx(s)===5).length;
-    h+=`<div class="group-head"><span class="perf-title"><span class="order" title="Order on event day">${i+1}</span><span class="clip">${esc(p.title)}</span><span class="tail">&nbsp;· ${pr} of ${p.songs.length} ready</span></span><button class="iconbtn more-btn" data-act="perfMenu" data-c="${c.id}" data-p="${p.id}" aria-label="Options for ${esc(p.title)}">${ic('more')}</button></div>
+    const pr=p.songs.filter(s=>nextIdx(s)===5).length,dur=perfDur(p);
+    h+=`<div class="group-head"><span class="perf-title"><span class="order" title="Order on event day">${i+1}</span><span class="clip">${esc(p.title)}</span><span class="tail">&nbsp;· ${pr} of ${p.songs.length} ready${dur?' · '+fmtDur(dur):''}</span></span><button class="iconbtn more-btn" data-act="perfMenu" data-c="${c.id}" data-p="${p.id}" aria-label="Options for ${esc(p.title)}">${ic('more')}</button></div>
     <div class="group">${p.songs.map(s=>songRow(c,p,s)).join('')}<button class="row add" data-act="newSong" data-c="${c.id}" data-p="${p.id}">${ic('plus')}Add song</button></div>
     ${p.props?`<p class="group-foot">Props and costume: ${esc(p.props)}</p>`:''}`;
   });
@@ -348,7 +348,7 @@ function songSheet(c,p,s){
 }
 function perfMenu(c,p){
   const i=c.performances.indexOf(p),ids=`data-c="${c.id}" data-p="${p.id}"`;
-  const bits=[p.type,p.format,p.performers.length?p.performers.length+' performer'+(p.performers.length>1?'s':''):''].filter(Boolean).join(' · ');
+  const bits=[p.type,p.format,p.performers.length?p.performers.length+' performer'+(p.performers.length>1?'s':''):'',fmtDur(perfDur(p))].filter(Boolean).join(' · ');
   openSheet(esc(p.title),`${bits?`<p class="page-sub" style="margin:-8px 0 12px">${esc(bits)}</p>`:''}<div class="group">
   <button class="row" data-act="editPerf" ${ids}>${ic('edit')}<span class="row-main"><span class="row-title">Edit performance</span></span></button>
   ${i>0?`<button class="row" data-act="movePerf" ${ids} data-d="-1">${ic('up')}<span class="row-main"><span class="row-title">Move up</span></span></button>`:''}
