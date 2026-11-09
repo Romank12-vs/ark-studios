@@ -232,6 +232,7 @@ function homeView(){
   const eyebrow=esc(fmtDate(t,{weekday:'long',day:'numeric',month:'long'}))+' · '+greet()+(st.name?', '+esc(st.name.split(' ')[0]):'');
   let h=pageHead('Today',{eyebrow});
   if(ui.update) h+=`<div class="group update-banner" style="margin-top:12px"><div class="row"><span class="row-main"><span class="row-title wrap">ARK Studios ${esc(ui.update.version)} is available</span><span class="row-sub wrap">Installs over this app. Your data stays.</span></span></div><div class="btns fill update-btns"><a class="btn sm primary" href="${esc(ui.update.url)}">Download</a><button class="btn sm ghost" data-act="dismissUpdate">Not now</button></div></div>`;
+  if(ui.webUpdate) h+=`<div class="group update-banner" style="margin-top:12px"><div class="row"><span class="row-main"><span class="row-title wrap">ARK Studios ${esc(ui.webUpdate)} is ready</span><span class="row-sub wrap">Tap Update to load it. Your data stays.</span></span></div><div class="btns fill update-btns"><button class="btn sm primary" data-act="reloadApp">Update</button><button class="btn sm ghost" data-act="dismissWebUpdate">Not now</button></div></div>`;
   if(!state.clients.length){
     return h+emptyHero('Track every client’s performances, songs, rehearsals and payments, and send WhatsApp updates in one tap.',`<button class="btn primary" data-act="newClient">${ic('plus')}Add first client</button><button class="btn ghost" data-act="sample">Explore with sample data</button><button class="btn ghost" data-act="importPick">Restore from a backup file</button>`);
   }
@@ -739,6 +740,8 @@ document.addEventListener('click',async e=>{
     case 'todoStage':ui.todoStage=+b.dataset.s;render(false);break;
     case 'sample':sample();break;
     case 'dismissUpdate':if(ui.update){state.settings.updateDismissedVersion=ui.update.version;ui.update=null;quietSave();render(false)}break;
+    case 'reloadApp':location.reload();break;
+    case 'dismissWebUpdate':ui.webUpdateDismissed=ui.webUpdate;ui.webUpdate=null;render(false);break;
     case 'close':closeSheet();break;
     case 'toastAct':{const fn=toastFn;toastFn=null;$('#toast').classList.remove('show');if(fn) fn();break;}
 
@@ -933,6 +936,18 @@ async function maybeCheckUpdate(){
   ui.update=r.banner;
   if(cur().v==='home') render(false);
 }
+// Web version only (iPhone keeps a home-screen app open for days): when the app comes back to the
+// screen, at most every 10 minutes, offer to reload if a newer version has been published.
+async function maybeCheckWebUpdate(){
+  if(ArkNative.isNative()) return;
+  const r=await ArkUpdate.checkWebUpdate({now:Date.now(),lastCheckAt:ui.webCheckAt,current:APP_VERSION,fetchFn:(u,o)=>fetch(u,o)});
+  if(!r) return;
+  ui.webCheckAt=r.checkedAt;
+  if(!r.version||r.version===ui.webUpdate||r.version===ui.webUpdateDismissed) return;
+  ui.webUpdate=r.version;
+  if(cur().v==='home') render(false);
+}
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible') maybeCheckWebUpdate()});
 /* ---- reminders (Android app only): the phone's notifications always mirror the plan for the next two weeks ---- */
 const TEST_FAIL='Couldn’t send. Check that notifications are allowed.';
 let remChain=Promise.resolve(),remTimer=null;
@@ -975,6 +990,7 @@ ArkNative.onPause(()=>{runAutoBackup();if(remTimer){clearTimeout(remTimer);remTi
 applyTheme();
 render(true);
 maybeCheckUpdate();
+maybeCheckWebUpdate();
 runAutoBackup();
 syncReminders();
 // Web only: inside the APK the files ship with the app, and a worker could serve stale ones after an update.

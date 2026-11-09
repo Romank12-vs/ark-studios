@@ -25,3 +25,8 @@ test('every startup file is pre-cached', () => {
 test('every pre-cached file exists', () => {
   for (const f of shell) if (f !== '') assert.ok(fs.existsSync('www/' + f), `www/${f} does not exist`);
 });
+
+// GitHub Pages lets browsers reuse files for 10 minutes; revalidating means "Update" always loads the new release.
+test('the worker revalidates with the server instead of trusting the browser cache', () => {
+  assert.match(sw, /fetch\(req,\s*\{\s*cache:\s*'no-cache'\s*\}\)/);
+});

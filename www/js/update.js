@@ -1,5 +1,6 @@
-/* ARK Studios update check (Android app only): at most once a day, ask GitHub for the latest
-   release and offer a banner when it is newer than this build. Any failure is silent. */
+/* ARK Studios update checks. Android app: at most once a day, ask GitHub for the latest release and
+   offer the APK. Web version (iPhone, browsers): when the app comes back to the screen, at most every
+   10 minutes, read the deployed version.js and offer a reload. Any failure is silent. */
 (function(){
 "use strict";
 
@@ -35,6 +36,27 @@ async function checkForUpdate({now, lastCheckAt, current, dismissed, fetchFn}){
   return {checkedAt: now, banner};
 }
 
-const api = {APK_URL, RELEASES_API, parseVersion, isNewer, shouldCheck, bannerFor, checkForUpdate};
+/* ---------- web version ---------- */
+const WEB_VERSION_URL = 'js/version.js';
+const WEB_CHECK_EVERY = 10 * 60000;
+
+function versionFromScript(text){
+  const m = /APP_VERSION\s*=\s*'(\d+\.\d+\.\d+)'/.exec(String(text == null ? '' : text));
+  return m ? m[1] : null;
+}
+// Resolves null when checked less than 10 minutes ago, else {checkedAt, version}: version is the newer
+// deployed version, or null when there is none (or the check failed).
+async function checkWebUpdate({now, lastCheckAt, current, fetchFn}){
+  if(lastCheckAt && now - lastCheckAt < WEB_CHECK_EVERY) return null;
+  let version = null;
+  try{
+    const res = await fetchFn(WEB_VERSION_URL, {cache: 'no-store'});
+    const deployed = res && res.ok ? versionFromScript(await res.text()) : null;
+    if(deployed && isNewer(deployed, current)) version = deployed;
+  }catch(e){ version = null; }
+  return {checkedAt: now, version};
+}
+
+const api = {APK_URL, RELEASES_API, parseVersion, isNewer, shouldCheck, bannerFor, checkForUpdate, WEB_VERSION_URL, versionFromScript, checkWebUpdate};
 if(typeof module !== 'undefined' && module.exports) module.exports = api; else window.ArkUpdate = api;
 })();
