@@ -1,6 +1,6 @@
 # Installing ARK Studios
 
-ARK Studios is free. There are two ways to get it: the Android app, or the web version, which also works on iPhone.
+ARK Studios is free. There are two ways to get it: the Android app, or the web version for iPhone and any browser. An iPhone can't install the Android app (the `.apk` file), so on iPhone always use the web version.
 
 ## Install on Android
 
@@ -10,25 +10,42 @@ ARK Studios is free. There are two ways to get it: the Android app, or the web v
 3. The first time only, Android asks whether Chrome may install unknown apps. Tap **Settings**, turn on **Allow from this source**, then go back.
 4. Tap **Install**. ARK Studios appears on your home screen.
 
-## Update
+If the link shows an error, GitHub is busy: try again a little later.
 
-When a new version is out, ARK Studios shows a banner: *"ARK Studios X.Y is available · Download"*. Tap **Download** and install it over the old app (or open the same link as above). Your data stays.
+## Update on Android
 
-## iPhone or any browser
+About once a day, when the app is opened with internet, ARK Studios checks for a new version. When one is out, Today shows *"ARK Studios X.Y.Z is available"*. Tap **Download**, open the downloaded file and tap **Update**. Android always asks for that last tap; the app can't install updates by itself. Your data stays.
 
-Open **https://romank12-vs.github.io/ark-studios/**
+### Optional: update checks with Obtainium
 
-- iPhone (Safari): tap **Share**, then **Add to Home Screen**.
-- Android (Chrome): tap the three-dot menu, then **Install app**.
+[Obtainium](https://github.com/ImranR98/Obtainium) is a free, open-source app that watches ARK Studios' releases, tells you when there is a new one and installs it in one tap.
 
-The web version works offline once opened, but has no reminders or automatic backups.
+1. Download Obtainium from its [releases page](https://github.com/ImranR98/Obtainium/releases) (the latest release; if there are several `.apk` files, the one with `arm64-v8a` in its name suits almost every recent phone) and install it the same way as above.
+2. On the phone, open this link: **https://apps.obtainium.imranr.dev/redirect.html?r=obtainium://add/https://github.com/Romank12-vs/ark-studios**
+   Obtainium opens with ARK Studios filled in. (Or open Obtainium, tap **Add App**, paste `https://github.com/Romank12-vs/ark-studios` and tap **Add**.)
+3. Tap **Add**. If ARK Studios is already installed, Obtainium shows its version; if not, tap **Install**.
+4. The first time Obtainium installs something, Android asks whether Obtainium may install unknown apps. Allow it.
 
-## Move data from the old web version
+From then on Obtainium checks in the background and sends a notification when a new version is out. Tap **Update**, then **Update** again on Android's screen. Your data stays.
 
-If you already used the earlier web version of this app:
+## Install on iPhone
 
-1. Open the old version, go to **Settings** and tap **Save backup file**.
-2. In the ARK Studios app, go to **Settings**, tap **Restore from file** and choose that backup.
+1. Open **Safari** (use Safari, not Chrome) and go to **https://romank12-vs.github.io/ark-studios/**
+2. Tap the **Share** button (the square with an arrow) at the bottom of the screen.
+3. Scroll down and tap **Add to Home Screen**, then **Add**.
+4. From now on, always open ARK Studios from its **home screen icon**. The icon version keeps its own data, separate from Safari: anything entered in a Safari tab won't appear in the icon version.
+
+The web version works offline once opened. It has no reminders and no automatic backup files (those are Android only), so use the weekly backup below.
+
+## Update on iPhone
+
+Updates come by themselves. Each time ARK Studios is opened with internet it loads the newest version. If a new version comes out while it's open, Today shows *"ARK Studios X.Y.Z is ready"*: tap **Update**. To check which version is running, go to **Settings → About**. If an update doesn't show up, close the app fully (swipe up from the bottom, then swipe ARK Studios away) and open it again.
+
+## Move data to another phone or from the web version
+
+1. On the phone that has the data, go to **Settings** and tap **Save backup file**, then send the file to the new phone (for example on WhatsApp).
+2. On the new phone, save the file (on iPhone: open it in WhatsApp, tap Share, **Save to Files**).
+3. In ARK Studios on the new phone, go to **Settings**, tap **Restore from file** and choose that file.
 
 ## Backups
 
@@ -39,7 +56,9 @@ In the Android app, backups happen by themselves.
 3. These files stay on the phone even if you uninstall the app.
 4. To save one yourself, tap **Save backup file**. It goes into the same folder, and you can then share it.
 
-**Weekly reminder to share a copy.** Once a week, the Today screen asks *"Send this week’s backup to Google Drive or WhatsApp?"* Tap **Share** and pick Google Drive or WhatsApp "Message yourself". Tap **Later** to hide it for 7 days. It comes back 7 days after you last shared. On the web version it offers **Save file** instead.
+**Weekly reminder to share a copy.** Once a week, the Today screen asks *"Send this week’s backup to Google Drive or WhatsApp?"* Tap **Share** and pick Google Drive or WhatsApp "Message yourself". Tap **Later** to hide it for 7 days. It comes back 7 days after you last shared.
+
+**On iPhone** the weekly banner asks *"Save this week’s backup file?"* Tap **Save file**, then save it to Files or share it to WhatsApp "Message yourself" or Google Drive. If nothing happens, go to **Settings → Copy as text** and paste it into WhatsApp "Message yourself". This weekly copy is the iPhone's only backup, and an iPhone may clear a web app's data if it isn't opened for a long time, so don't skip it.
 
 **After a reinstall, or on a new phone**
 
