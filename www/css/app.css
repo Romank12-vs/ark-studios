@@ -314,7 +314,7 @@ details.more[open]>summary .more-chev{transform:rotate(180deg)}
 .row-details>summary::-webkit-details-marker{display:none}
 .row-details[open]>summary .more-chev{transform:rotate(180deg)}
 .row-details .more-body{padding:0 14px 14px}
-.chip{min-width:44px;justify-content:center}
+.chip{min-width:44px;justify-content:center;flex:none} /* keep the text width; the row scrolls sideways */
 .split{display:flex;min-width:0}
 .split .clip{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .split .tail{flex:none;white-space:nowrap}

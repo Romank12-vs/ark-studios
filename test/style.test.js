@@ -46,3 +46,9 @@ test('segbar sits right under the 60 px top bar', () => {
 test('no styles left for removed elements', () => {
   for (const re of [/\.b-due\b/, /\.eq i\.full/, /\.stage\b/, /\.hero \.btns/, /\.song(?![\w-])/, /\.x(?![\w-])/]) assert.doesNotMatch(css(), re);
 });
+
+test('chips keep their text width in a scrolling row instead of shrinking into circles', () => {
+  // .chip has min-width:44px for tapping, which replaces the flex item's "no smaller than its text"
+  // minimum, so the 9 message chips were squeezed to 44x44 on a phone.
+  assert.match(css(), /\.chip\{[^}]*flex:none/);
+});

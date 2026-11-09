@@ -510,6 +510,14 @@ function tplSheet(k){
 }
 
 /* ================= render ================= */
+// The iPhone keyboard scrolls the page behind a sheet to make room for a field, and nothing scrolls it
+// back. When the sheet closes, return to where the page was (again once the keyboard has slid away),
+// unless the app moved to another screen meanwhile: render(true) counts those in navs.
+let sheetY=0,navs=0,navs0=0;
+function restoreScroll(){
+  const y=sheetY,n=navs0,put=()=>{if(navs===n&&!sheet.open&&Math.abs(window.scrollY-y)>1) window.scrollTo(0,y)};
+  put();setTimeout(put,350);
+}
 const TABS=[['home','Today','sun'],['clients','Clients','users'],['money','Money','wallet'],['more','Settings','gear']];
 function render(scroll){
   const v=cur().v;
@@ -520,7 +528,7 @@ function render(scroll){
   const fab=$('#fab'),fabs={clients:['newClient','New client'],money:['newPay','Record payment']};
   const f=state.clients.length||v==='clients'?fabs[v]:null;
   if(f&&!(v!=='clients'&&!state.clients.length)){fab.hidden=false;fab.dataset.act=f[0];fab.innerHTML=ic('plus');fab.setAttribute('aria-label',f[1])}else fab.hidden=true;
-  if(scroll) window.scrollTo(0,0);
+  if(scroll){navs++;window.scrollTo(0,0)}
   onScroll();
 }
 function onScroll(){const tb=$('#topbar');if(tb) tb.classList.toggle('scrolled',window.scrollY>70)}
@@ -537,7 +545,7 @@ function openSheet(title,body,opts){
     :`<div class="sheet-head"><span class="sheet-side" aria-hidden="true"></span><h2 id="sheetTitle">${title}</h2><button class="link sheet-side sheet-done" data-act="close">Done</button></div>`;
   $('#sheetBody').innerHTML=`<div class="grab" aria-hidden="true"></div>${head}${body}`;
   sheet.style.transform='';
-  if(!sheet.open) sheet.showModal();
+  if(!sheet.open){sheetY=window.scrollY;navs0=navs;sheet.showModal()}
   $('#sheetBody').scrollTop=0;
 }
 function closeSheet(){if(sheet.open) sheet.close();sheet.style.transform=''}
@@ -549,7 +557,7 @@ sheet.addEventListener('click',e=>{
   if(e.clientX>=r.left&&e.clientX<=r.right&&e.clientY>=r.top&&e.clientY<=r.bottom) return;
   closeSheet();
 });
-sheet.addEventListener('close',()=>{if(cur().v==='more') render(false)});
+sheet.addEventListener('close',()=>{if(cur().v==='more') render(false);restoreScroll()});
 // Drag the grabber or header down: past 120px the sheet closes, otherwise it springs back.
 (function(){
   let drag=null;

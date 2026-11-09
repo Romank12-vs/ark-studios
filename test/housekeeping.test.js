@@ -14,3 +14,10 @@ test('save stamps updatedAt, quietSave does not', () => {
   assert.match(html, /function save\(\)\{state\.updatedAt=Date\.now\(\);quietSave\(\)/);
   assert.doesNotMatch(/function quietSave\(\)\{[^}]*\}/.exec(html)[0], /updatedAt/);
 });
+
+test('closing a sheet puts the page back where it was (the iPhone keyboard scrolls it)', () => {
+  const open = /function openSheet\([^)]*\)\{[\s\S]*?\n\}/.exec(html)[0];
+  assert.match(open, /if\(!sheet\.open\)\{sheetY=window\.scrollY;navs0=navs;sheet\.showModal\(\)\}/);
+  assert.match(html, /sheet\.addEventListener\('close',\(\)=>\{[^}]*restoreScroll\(\)/);
+  assert.match(html, /if\(scroll\)\{navs\+\+;window\.scrollTo\(0,0\)\}/, 'moving to another screen must win over the restore');
+});
