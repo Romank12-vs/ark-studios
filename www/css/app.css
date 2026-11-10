@@ -247,9 +247,16 @@ svg.i.row-chev{flex:none;width:16px;height:16px;color:var(--muted);opacity:.6}
 .hero-btns{display:flex;gap:10px;margin-top:14px}
 .hero-btns .grow{flex:1}
 .hero-btns .call{width:52px;padding:0;color:var(--accent)}
-.tab-summary{margin:14px 4px 0}
+.tab-top{display:flex;align-items:center;gap:12px;margin:6px 4px -6px}
+.tab-top .page-sub{flex:1;min-width:0}
+.tab-top .link{flex:none;display:inline-flex;align-items:center;gap:4px}
+.tab-top .link svg.i{width:18px;height:18px}
 .perf-title{display:flex;align-items:center;gap:8px;min-width:0;color:var(--muted)}
 .perf-title .order{width:24px;height:24px;font-size:.8125rem}
+.order-row{gap:6px;padding-top:4px;padding-bottom:4px;padding-right:6px}
+.order-row .order{width:24px;height:24px;font-size:.8125rem;margin-right:6px}
+.order-row .iconbtn{flex:none;color:var(--accent)}
+.order-row .iconbtn:disabled{color:var(--muted);opacity:.35}
 .perf-title .clip{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--ink);font-weight:600}
 .perf-title .tail{flex:none;white-space:nowrap}
 .group-head .more-btn{margin:-12px -10px -12px 0;color:var(--accent)}

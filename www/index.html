@@ -320,7 +320,8 @@ function clientView(){
 function songsTab(c){
   const songs=songsOf(c),ready=readyOf(c),total=c.performances.reduce((a,p)=>a+perfDur(p),0),notFinal=songs.filter(s=>!s.steps.final).length;
   let h='';
-  if(songs.length) h+=`<p class="page-sub tab-summary">${ready} of ${songs.length} ready${total?' · total '+fmtDur(total):''}${c.songsIncluded?' · package '+songs.length+'/'+esc(c.songsIncluded):''}</p>`;
+  // With performances listed, Add performance also sits up here so a long list needn't be scrolled.
+  if(c.performances.length) h+=`<div class="tab-top"><p class="page-sub">${songs.length?`${ready} of ${songs.length} ready${total?' · total '+fmtDur(total):''}${c.songsIncluded?' · package '+songs.length+'/'+esc(c.songsIncluded):''}`:''}</p><button class="link" data-act="newPerf" data-c="${c.id}">${ic('plus')}Add performance</button></div>`;
   c.performances.forEach((p,i)=>{
     const pr=p.songs.filter(s=>nextIdx(s)===5).length,dur=perfDur(p);
     h+=`<div class="group-head"><span class="perf-title"><span class="order" title="Order on event day">${i+1}</span><span class="clip">${esc(p.title)}</span><span class="tail">&nbsp;· ${pr} of ${p.songs.length} ready${dur?' · '+fmtDur(dur):''}</span></span><button class="iconbtn more-btn" data-act="perfMenu" data-c="${c.id}" data-p="${p.id}" aria-label="Options for ${esc(p.title)}">${ic('more')}</button></div>
@@ -354,8 +355,20 @@ function perfMenu(c,p){
   const bits=[p.type,p.format,p.performers.length?p.performers.length+' performer'+(p.performers.length>1?'s':''):'',fmtDur(perfDur(p))].filter(Boolean).join(' · ');
   openSheet(esc(p.title),`${bits?`<p class="page-sub" style="margin:-8px 0 12px">${esc(bits)}</p>`:''}<div class="group">
   <button class="row" data-act="editPerf" ${ids}>${ic('edit')}<span class="row-main"><span class="row-title">Edit performance</span></span></button>
+  ${p.songs.length>1?`<button class="row" data-act="songOrder" ${ids}>${ic('list')}<span class="row-main"><span class="row-title">Reorder songs</span></span></button>`:''}
   ${i>0?`<button class="row" data-act="movePerf" ${ids} data-d="-1">${ic('up')}<span class="row-main"><span class="row-title">Move up</span></span></button>`:''}
   ${i<c.performances.length-1?`<button class="row" data-act="movePerf" ${ids} data-d="1">${ic('down')}<span class="row-main"><span class="row-title">Move down</span></span></button>`:''}</div>`);
+}
+// A performance's songs in order, each with up and down buttons. Every tap saves straight away.
+function songOrderSheet(c,p){
+  openSheet('Song order',`<p class="page-sub" style="margin:-8px 0 12px">${esc(p.title)}</p><div class="group" id="songOrder">${songOrderRows(c,p)}</div>`);
+}
+function songOrderRows(c,p){
+  const n=p.songs.length;
+  return p.songs.map((s,i)=>{
+    const ids=`data-c="${c.id}" data-p="${p.id}" data-s="${s.id}"`;
+    return `<div class="row order-row"><span class="order">${i+1}</span><span class="row-main"><span class="row-title">${esc(s.title)}</span></span><button class="iconbtn" data-act="moveSong" ${ids} data-d="-1" aria-label="Move ${esc(s.title)} up"${i?'':' disabled'}>${ic('up')}</button><button class="iconbtn" data-act="moveSong" ${ids} data-d="1" aria-label="Move ${esc(s.title)} down"${i<n-1?'':' disabled'}>${ic('down')}</button></div>`;
+  }).join('');
 }
 function rehCard(c,r,showClient){
   const a=attendCount(c,r),past=r.date<todayISO();
@@ -552,6 +565,17 @@ function openSheet(title,body,opts){
   $('#sheetBody').scrollTop=0;
 }
 function closeSheet(){if(sheet.open) sheet.close();sheet.style.transform=''}
+// A new performance goes at the end of the list, out of sight when it was added from the top. Call
+// right after closeSheet(): the sheet's close event then scrolls to it instead of back to sheetY.
+function revealPerf(p){
+  const btn=document.querySelector(`[data-act=perfMenu][data-p="${p.id}"]`);if(!btn) return;
+  const head=btn.closest('.group-head'),grp=head.nextElementSibling||head;
+  const top=head.getBoundingClientRect().top+window.scrollY,bottom=grp.getBoundingClientRect().bottom+window.scrollY;
+  const bar=$('.segbar'),barBottom=bar?(parseFloat(getComputedStyle(bar).top)||0)+bar.offsetHeight:0; // once stuck
+  const tabs=document.querySelector('nav.tabs'),tabsH=tabs?tabs.offsetHeight:0;
+  if(top>=sheetY+barBottom&&bottom<=sheetY+window.innerHeight-tabsH) return; // already in view there
+  sheetY=Math.max(0,top-barBottom-8);
+}
 // Close only on a tap on the dimmed backdrop, i.e. outside the sheet's box. (A tap on the header can
 // also be retargeted to the dialog itself, so e.target alone isn't enough.)
 sheet.addEventListener('click',e=>{
@@ -786,8 +810,9 @@ document.addEventListener('click',async e=>{
       const old=p?p.performers:[];
       const performers=names.map(n=>old.find(o=>o.name.toLowerCase()===n.toLowerCase())||{id:uid(),name:n});
       const d={title,type,format:val('f_format'),props:val('f_props'),performers};
-      if(p) Object.assign(p,d);else c.performances.push({id:uid(),people:'',songs:[],...d});
-      save();closeSheet();render(false);toast(p?'Performance saved':'Performance added');break;}
+      let np=null;
+      if(p) Object.assign(p,d);else{np={id:uid(),people:'',songs:[],...d};c.performances.push(np)}
+      save();closeSheet();render(false);if(np) revealPerf(np);toast(p?'Performance saved':'Performance added');break;}
     case 'delPerf':{const sn=snap();c.performances=c.performances.filter(x=>x!==p);c.rehearsals.forEach(r=>r.perfIds=r.perfIds.filter(id=>id!==p.id));save();closeSheet();render(false);toast(p.title+' deleted',sn);break;}
     case 'movePerf':{const i=c.performances.indexOf(p),j=i+(+b.dataset.d);if(j<0||j>=c.performances.length) return;closeSheet();[c.performances[i],c.performances[j]]=[c.performances[j],c.performances[i]];save();render(false);break;}
 
@@ -806,6 +831,15 @@ document.addEventListener('click',async e=>{
       if(s.steps[k]&&nextIdx(s)===5) toast('🎉 '+s.title+' is ready');else toast(s.steps[k]?STEP_DONE[i]+': '+s.title:STEPS[i].l+' unmarked');break;}
     case 'stepNext':{const k=nextStepKey(s);if(!k) return;const sn=snap();s.steps[k]=true;save();ArkNative.tap();render(false);const i=STEPS.findIndex(x=>x.k===k);toast(nextIdx(s)===5?'🎉 '+s.title+' is ready':STEP_DONE[i]+': '+s.title,sn);break;}
     case 'songSheet':songSheet(c,p,s);break;
+    case 'songOrder':songOrderSheet(c,p);break;
+    case 'moveSong':{
+      const i=p.songs.indexOf(s),j=i+(+b.dataset.d);if(i<0||j<0||j>=p.songs.length) return;
+      [p.songs[i],p.songs[j]]=[p.songs[j],p.songs[i]];save();render(false);
+      const box=$('#songOrder');if(!box) break;
+      box.innerHTML=songOrderRows(c,p);
+      // Keep the button under the finger on the song that moved, so it can be tapped again.
+      const nb=box.querySelector(`[data-s="${s.id}"][data-d="${b.dataset.d}"]`);if(nb&&!nb.disabled) nb.focus({preventScroll:true});
+      break;}
     case 'perfMenu':perfMenu(c,p);break;
     case 'shareTut':ui.compose={c:c.id,t:'tutorial',pid:p.id,sid:s.id};composer();break;
 

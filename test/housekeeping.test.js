@@ -21,3 +21,10 @@ test('closing a sheet puts the page back where it was (the iPhone keyboard scrol
   assert.match(html, /sheet\.addEventListener\('close',\(\)=>\{[^}]*restoreScroll\(\)/);
   assert.match(html, /if\(scroll\)\{navs\+\+;window\.scrollTo\(0,0\)\}/, 'moving to another screen must win over the restore');
 });
+
+test('Add performance sits at the top of a filled Songs tab, and a new one is scrolled into view', () => {
+  const tab = /function songsTab\(c\)\{[\s\S]*?\n\}/.exec(html)[0];
+  assert.equal((tab.match(/data-act="newPerf"/g) || []).length, 2, 'one button at the top, one at the end');
+  // revealPerf must run after closeSheet: it retargets the scroll that the sheet's close event restores.
+  assert.match(html, /save\(\);closeSheet\(\);render\(false\);if\(np\) revealPerf\(np\)/);
+});
