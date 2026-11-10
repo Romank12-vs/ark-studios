@@ -44,7 +44,7 @@ function normalize(s){
     performances:(c.performances||[]).map(p=>({id:p.id||uid(),title:p.title||'Performance',type:p.type||'',format:p.format||'',people:p.people||'',props:p.props||'',
       performers:(p.performers||[]).map(x=>({id:x.id||uid(),name:x.name||''})),
       songs:(p.songs||[]).map(x=>({id:x.id||uid(),title:x.title||'Song',artist:x.artist||'',dur:x.dur||0,cut:x.cut||'',ref:x.ref||'',tutorial:x.tutorial||'',notes:x.notes||'',steps:x.steps||{}}))})),
-    rehearsals:(c.rehearsals||[]).map(r=>({id:r.id||uid(),date:r.date||todayISO(),time:r.time||'',mins:r.mins||90,place:r.place||'Studio',perfIds:r.perfIds||[],notes:r.notes||'',status:r.status||'planned',attendance:r.attendance||{}})),
+    rehearsals:(c.rehearsals||[]).map(r=>({id:r.id||uid(),date:r.date||todayISO(),time:r.time||'',mins:r.mins||90,place:r.place||'Studio',perfIds:r.perfIds||[],songIds:r.songIds||[],notes:r.notes||'',status:r.status||'planned',attendance:r.attendance||{}})),
     charges:(c.charges||[]).map(x=>({id:x.id||uid(),label:x.label||'Charge',amount:num(x.amount)})),
     payments:(c.payments||[]).map(x=>({id:x.id||uid(),date:x.date||todayISO(),amount:num(x.amount),mode:x.mode||'UPI',note:x.note||''}))
   }));
@@ -65,6 +65,25 @@ const readyOf=c=>songsOf(c).filter(s=>nextIdx(s)===5).length;
 function totals(c){const total=c.charges.reduce((a,x)=>a+x.amount,0),paid=c.payments.reduce((a,x)=>a+x.amount,0);return {total,paid,bal:total-paid}}
 const isActive=c=>c.status==='booked'||c.status==='enquiry';
 function upcomingReh(c){const t=todayISO();return c.rehearsals.filter(r=>r.status==='planned'&&r.date>=t).sort((a,b)=>(a.date+a.time).localeCompare(b.date+b.time))}
+// What a rehearsal covers, for lists and messages: performance names, each with the songs it is for, if any.
+function rehItems(c,r){
+  const ids=(r&&r.songIds)||[];
+  return ((r&&r.perfIds)||[]).map(id=>(c.performances||[]).find(p=>p.id===id)).filter(Boolean).map(p=>{
+    const focus=p.songs.filter(s=>ids.includes(s.id)).map(s=>s.title);
+    return focus.length?p.title+': '+focus.join(', '):p.title;
+  });
+}
+// The next planned rehearsal that covers this song: one for this song, or one for its whole
+// performance (or for everything) that isn't just for other songs of that performance.
+// named: leave out rehearsals of everything (no performance ticked), such as a final run-through.
+function nextRehFor(c,p,s,named){
+  return upcomingReh(c).find(r=>{
+    const ids=r.songIds||[];
+    if(ids.includes(s.id)) return true;
+    if(r.perfIds.length?!r.perfIds.includes(p.id):named) return false;
+    return !p.songs.some(x=>ids.includes(x.id));
+  })||null;
+}
 
 /* ---------- backups ---------- */
 const BACKUP_MARKER='ark-studios';
@@ -94,6 +113,6 @@ function customFuncs(clients,known){
   }
   return out.sort((a,b)=>a.localeCompare(b));
 }
-const api={customFuncs,receiptPayment,LEAD_CHOICES,STEPS,V1_TPL,uid,pad,isoOf,todayISO,addDays,daysLeft,fmtDate,dayLabel,fmtTime,parseDur,fmtDur,money,num,waNumber,waHref,nextIdx,doneN,nextStepKey,nextStepLabel,nextStepDoneLabel,songsOf,perfDur,readyOf,totals,isActive,upcomingReh,blank,normalize,BACKUP_MARKER,backupFileName,parseBackup};
+const api={customFuncs,receiptPayment,LEAD_CHOICES,STEPS,V1_TPL,uid,pad,isoOf,todayISO,addDays,daysLeft,fmtDate,dayLabel,fmtTime,parseDur,fmtDur,money,num,waNumber,waHref,nextIdx,doneN,nextStepKey,nextStepLabel,nextStepDoneLabel,songsOf,perfDur,readyOf,totals,isActive,upcomingReh,rehItems,nextRehFor,blank,normalize,BACKUP_MARKER,backupFileName,parseBackup};
 if(typeof module!=='undefined'&&module.exports) module.exports=api; else window.TaalCore=api;
 })();

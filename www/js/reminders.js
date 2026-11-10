@@ -71,7 +71,7 @@ function planNotifications(state, now){
   if(rem.rehearsal){
     live(state).forEach(c => (c.rehearsals || []).forEach(r => {
       if(r.status !== 'planned' || !r.time) return;
-      const parts = (r.perfIds || []).map(pid => (c.performances || []).find(p => p.id === pid)).filter(Boolean).map(p => p.title);
+      const parts = C.rehItems(c, r);
       const place = r.place === 'Venue' ? (c.venue || '') : (r.place || '');
       keep({
         id: rehearsalNotifId(c.id, r.id),

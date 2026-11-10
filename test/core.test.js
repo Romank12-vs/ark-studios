@@ -128,3 +128,35 @@ test('custom functions: typed-in ones come back once each, A to Z, built-ins lef
   assert.deepEqual(C.customFuncs(clients, known), ['Anniversary', 'engagement']);
   assert.deepEqual(C.customFuncs([], known), []);
 });
+
+test('rehearsal items name the songs a rehearsal is for', () => {
+  const c = { performances: [
+    { id: 'p1', title: 'Cousins group', songs: [{ id: 's1', title: 'London Thumakda' }, { id: 's2', title: 'Kala Chashma' }] },
+    { id: 'p2', title: 'Couple dance', songs: [{ id: 's3', title: 'Tum Se Hi' }] }] };
+  assert.deepEqual(C.rehItems(c, { perfIds: ['p1', 'p2'], songIds: ['s2', 's1'] }), ['Cousins group: London Thumakda, Kala Chashma', 'Couple dance']);
+  assert.deepEqual(C.rehItems(c, { perfIds: ['p2', 'gone'] }), ['Couple dance']);
+  assert.deepEqual(C.rehItems(c, { perfIds: [] }), []);
+});
+
+test('next rehearsal for a song: its own, its whole performance or everything, not other songs only', () => {
+  const day = n => C.addDays(C.todayISO(), n);
+  const p = { id: 'p1', songs: [{ id: 's1' }, { id: 's2' }] }, s1 = p.songs[0];
+  const reh = (id, n, perfIds, songIds, status = 'planned') => ({ id, date: day(n), time: '18:00', perfIds, songIds, status });
+  const at = (...rs) => C.nextRehFor({ performances: [p], rehearsals: rs }, p, s1);
+  assert.equal(at(), null);
+  assert.equal(at(reh('a', 2, ['p1'], ['s2'])), null, 'only for another song');
+  assert.equal(at(reh('a', 2, ['p9'], [])), null, 'another performance');
+  assert.equal(at(reh('a', -1, ['p1'], ['s1'])), null, 'already past');
+  assert.equal(at(reh('a', 2, ['p1'], ['s1'], 'cancelled')), null);
+  assert.equal(at(reh('a', 3, ['p1'], ['s1']), reh('b', 2, [], [])).id, 'b', 'earliest, and an all-performances one counts');
+  assert.equal(at(reh('a', 2, ['p1'], [])).id, 'a', 'whole performance');
+  assert.equal(at(reh('a', 2, ['p1'], ['s1', 's2'])).id, 'a');
+  const named = (...rs) => C.nextRehFor({ performances: [p], rehearsals: rs }, p, s1, true);
+  assert.equal(named(reh('a', 2, [], [])), null, 'a rehearsal of everything is not named');
+  assert.equal(named(reh('a', 3, ['p1'], []), reh('b', 2, [], [])).id, 'a');
+});
+
+test('normalize keeps the songs a rehearsal is for, and gives older ones none', () => {
+  const st = C.normalize({ clients: [{ id: 'c', name: 'X', performances: [], rehearsals: [{ id: 'r1', perfIds: ['p1'], songIds: ['s1'] }, { id: 'r2' }] }] });
+  assert.deepEqual(st.clients[0].rehearsals.map(r => r.songIds), [['s1'], []]);
+});

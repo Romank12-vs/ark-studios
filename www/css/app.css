@@ -262,6 +262,8 @@ svg.i.row-chev{flex:none;width:16px;height:16px;color:var(--muted);opacity:.6}
 .group-head .more-btn{margin:-12px -10px -12px 0;color:var(--accent)}
 .group-foot{font-size:13px;color:var(--muted);margin:6px 16px 0}
 .row.add{color:var(--accent);font-weight:600}
+.row.suggest{background:var(--accent-soft)}
+.row.suggest>svg.i,.row.suggest .row-title{color:var(--accent)}
 .row.danger-row{color:var(--warn);font-weight:600;justify-content:center}
 .tone-accent{color:var(--accent)}
 .dots{letter-spacing:1px}
