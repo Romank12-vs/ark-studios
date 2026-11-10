@@ -117,3 +117,14 @@ test('receipt uses the chosen payment, else the latest', () => {
   assert.equal(C.receiptPayment(c, 'gone').id, 'c');
   assert.equal(C.receiptPayment({ payments: [] }), null);
 });
+
+test('custom functions: typed-in ones come back once each, A to Z, built-ins left out', () => {
+  const known = ['Sangeet', 'Haldi', 'Other'];
+  const clients = [
+    { performances: [{ type: 'Sangeet' }, { type: 'engagement' }, { type: '  ' }, {}] },
+    { performances: [{ type: 'Anniversary' }, { type: 'Engagement' }, { type: 'other' }] },
+    { performances: [] }, {}
+  ];
+  assert.deepEqual(C.customFuncs(clients, known), ['Anniversary', 'engagement']);
+  assert.deepEqual(C.customFuncs([], known), []);
+});

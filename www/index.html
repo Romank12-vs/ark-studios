@@ -34,7 +34,7 @@
 <script>
 (function(){
 "use strict";
-const {receiptPayment,LEAD_CHOICES,STEPS,V1_TPL,uid,pad,isoOf,todayISO,addDays,daysLeft,fmtDate,dayLabel,fmtTime,parseDur,fmtDur,money,num,waNumber,waHref,nextIdx,doneN,nextStepKey,nextStepLabel,nextStepDoneLabel,songsOf,perfDur,readyOf,totals,isActive,upcomingReh,blank,normalize,BACKUP_MARKER,backupFileName,parseBackup}=window.TaalCore;
+const {customFuncs,receiptPayment,LEAD_CHOICES,STEPS,V1_TPL,uid,pad,isoOf,todayISO,addDays,daysLeft,fmtDate,dayLabel,fmtTime,parseDur,fmtDur,money,num,waNumber,waHref,nextIdx,doneN,nextStepKey,nextStepLabel,nextStepDoneLabel,songsOf,perfDur,readyOf,totals,isActive,upcomingReh,blank,normalize,BACKUP_MARKER,backupFileName,parseBackup}=window.TaalCore;
 /* ================= constants ================= */
 const KEY='taal-v2', OLD_KEY='taal-choreo-v1';
 const STEP_DONE=['Song finalised','Editing done','Choreography done','Taught','Practice done'];
@@ -44,6 +44,9 @@ const TODO_HEAD=['Get songs finalised','Edit the tracks','Choreograph','Teach','
 const EMO=['🎶','✂️','📝','💃','🔁','✅'];
 const FUNCS=['Sangeet','Wedding entry','Haldi','Mehendi','Cocktail','Reception','Baraat','Carnival','School / College','Corporate','Other'];
 const FORMATS=['Solo','Couple','Group','Flash mob'];
+const CUSTOM_FUNC='__custom';
+// Built-in functions, then any typed in as custom, with Other kept last.
+const funcChoices=()=>{const base=FUNCS.filter(f=>f!=='Other');return [...base,...customFuncs(state.clients,FUNCS),'Other']};
 const STATUSES=[{k:'enquiry',l:'Enquiry'},{k:'booked',l:'Booked'},{k:'done',l:'Completed'},{k:'cancelled',l:'Cancelled'}];
 const SOURCES=['Instagram','Referral','WedMeGood','WeddingWire','Google','Walk-in','Repeat client','Other'];
 const PLACES=['Studio','Client’s home','Venue','Online'];
@@ -611,7 +614,8 @@ function perfForm(c,p){
   const n=!p;p=p||{performers:[]};
   openSheet(n?'New performance':'Edit performance',`
   <label class="field"><span>Performance name</span><input type="text" id="f_title" value="${esc(p.title)}" placeholder="e.g. Bride entry, Cousins group"></label>
-  <div class="two"><label class="field"><span>Function</span><select id="f_type">${opt(FUNCS,p.type||'Sangeet')}</select></label><label class="field"><span>Format</span><select id="f_format">${opt(FORMATS,p.format||'Group')}</select></label></div>
+  <div class="two"><label class="field"><span>Function</span><select id="f_type">${opt(funcChoices(),p.type||'Sangeet')}<option value="${CUSTOM_FUNC}">Custom…</option></select></label><label class="field"><span>Format</span><select id="f_format">${opt(FORMATS,p.format||'Group')}</select></label></div>
+  <label class="field" id="f_typeOwnWrap" hidden><span>Function name</span><input type="text" id="f_typeOwn" placeholder="e.g. Engagement, Anniversary" autocomplete="off"><small>It stays in the Function list for next time.</small></label>
   ${moreDetails(!n&&!!(p.performers.length||p.props),`<label class="field"><span>Performers</span><textarea id="f_perfs" rows="4" placeholder="One name per line, or separated by commas">${esc(p.performers.map(x=>x.name).join('\n'))}</textarea><small>Used for rehearsal attendance.</small></label>
   <label class="field"><span>Props and costume</span><input type="text" id="f_props" value="${esc(p.props)}" placeholder="e.g. Dandiya sticks, matching red dupattas"></label>`)}
   ${n?'':deleteRow('Delete performance','delPerf',`data-c="${c.id}" data-p="${p.id}"`)}`,{save:{act:'savePerf',data:{c:c.id,p:p.id||''},label:n?'Add':'Save'}});
@@ -773,10 +777,15 @@ document.addEventListener('click',async e=>{
     case 'editPerf':perfForm(c,p);break;
     case 'savePerf':{
       const title=val('f_title');if(!title){toast('Add a performance name');return}
+      let type=val('f_type');
+      if(type===CUSTOM_FUNC){
+        const own=val('f_typeOwn');if(!own){toast('Type the function name');$('#f_typeOwn').focus();return}
+        type=funcChoices().find(x=>x.toLowerCase()===own.toLowerCase())||own;
+      }
       const names=val('f_perfs').split(/[\n,]+/).map(x=>x.trim()).filter(Boolean);
       const old=p?p.performers:[];
       const performers=names.map(n=>old.find(o=>o.name.toLowerCase()===n.toLowerCase())||{id:uid(),name:n});
-      const d={title,type:val('f_type'),format:val('f_format'),props:val('f_props'),performers};
+      const d={title,type,format:val('f_format'),props:val('f_props'),performers};
       if(p) Object.assign(p,d);else c.performances.push({id:uid(),people:'',songs:[],...d});
       save();closeSheet();render(false);toast(p?'Performance saved':'Performance added');break;}
     case 'delPerf':{const sn=snap();c.performances=c.performances.filter(x=>x!==p);c.rehearsals.forEach(r=>r.perfIds=r.perfIds.filter(id=>id!==p.id));save();closeSheet();render(false);toast(p.title+' deleted',sn);break;}
@@ -889,6 +898,7 @@ document.addEventListener('input',e=>{
 document.addEventListener('change',e=>{
   const t=e.target;
   if(t.dataset.rem==='digestTime'){if(/^\d\d:\d\d$/.test(t.value)){state.settings.reminders.digestTime=t.value;save()}return}
+  if(t.id==='f_type'){const w=$('#f_typeOwnWrap');if(w){w.hidden=t.value!==CUSTOM_FUNC;if(!w.hidden) $('#f_typeOwn').focus()}return}
   if((t.name==='rp'||t.id==='f_client')&&$('#rehPerfs')){
     const sel=val('f_client'),btn=document.querySelector('[data-act=saveReh]');
     const c=getC(sel||(btn&&btn.dataset.c));if(!c) return;

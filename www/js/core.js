@@ -85,6 +85,15 @@ function receiptPayment(c,id){
   for(const x of ps) if(!last||String(x.date||'').localeCompare(String(last.date||''))>=0) last=x;
   return last;
 }
-const api={receiptPayment,LEAD_CHOICES,STEPS,V1_TPL,uid,pad,isoOf,todayISO,addDays,daysLeft,fmtDate,dayLabel,fmtTime,parseDur,fmtDur,money,num,waNumber,waHref,nextIdx,doneN,nextStepKey,nextStepLabel,nextStepDoneLabel,songsOf,perfDur,readyOf,totals,isActive,upcomingReh,blank,normalize,BACKUP_MARKER,backupFileName,parseBackup};
+// Functions typed in as custom (not in the built-in list), each once, A to Z, so they can be picked again.
+function customFuncs(clients,known){
+  const seen=new Set((known||[]).map(x=>String(x).toLowerCase())),out=[];
+  for(const c of clients||[]) for(const p of (c&&c.performances)||[]){
+    const t=String((p&&p.type)||'').trim(),k=t.toLowerCase();
+    if(t&&!seen.has(k)){seen.add(k);out.push(t)}
+  }
+  return out.sort((a,b)=>a.localeCompare(b));
+}
+const api={customFuncs,receiptPayment,LEAD_CHOICES,STEPS,V1_TPL,uid,pad,isoOf,todayISO,addDays,daysLeft,fmtDate,dayLabel,fmtTime,parseDur,fmtDur,money,num,waNumber,waHref,nextIdx,doneN,nextStepKey,nextStepLabel,nextStepDoneLabel,songsOf,perfDur,readyOf,totals,isActive,upcomingReh,blank,normalize,BACKUP_MARKER,backupFileName,parseBackup};
 if(typeof module!=='undefined'&&module.exports) module.exports=api; else window.TaalCore=api;
 })();

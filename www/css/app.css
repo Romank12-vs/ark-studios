@@ -130,6 +130,7 @@ h1,h2,h3{margin:0;font-weight:600}
 
 /* forms */
 .field{display:block;margin:0 0 14px}
+.field[hidden]{display:none}
 .field>span{display:block;font-size:.85rem;font-weight:600;margin-bottom:5px}
 .field small{display:block;color:var(--muted);font-size:.8125rem;margin-top:4px}
 input[type=text],input[type=tel],input[type=date],input[type=time],input[type=number],input[type=url],input[type=search],select,textarea{width:100%;border:1px solid var(--line);background:var(--bg);border-radius:11px;padding:10px 12px;font-size:16px;min-height:44px}
